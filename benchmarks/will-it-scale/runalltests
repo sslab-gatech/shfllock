@@ -1,0 +1,9 @@
+#!/bin/sh
+
+# for i in *_processes
+for i in lock1_processes lock2_processes open1_processes open2_processes
+do
+	TESTCASE=`basename $i _processes`
+	echo "Running $TESTCASE"
+	./runtest.py $TESTCASE > $TESTCASE.csv
+done

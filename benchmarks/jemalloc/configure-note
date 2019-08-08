@@ -1,0 +1,1 @@
+./configure --with-static-libunwind=/usr/lib/x86_64-linux-gnu/libunwind.a --without-export --disable-libdl --disable-pthread 

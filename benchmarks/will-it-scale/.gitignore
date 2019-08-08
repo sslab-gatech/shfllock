@@ -1,0 +1,5 @@
+*_processes
+*_threads
+tests/*.o
+*.csv
+*.title

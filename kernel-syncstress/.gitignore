@@ -1,0 +1,3 @@
+build/*
+include/cpuseq.h
+*.swp
