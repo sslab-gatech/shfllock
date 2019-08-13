@@ -14,6 +14,17 @@ and NUMA-aware blocking rwlock.
 ### Tested Environment
 - We use Ubuntu 16.04 but with our versions of kernels for testing purposes.
 
+### Required programs
+- We use the following programs for the evaluation
+  - Fxmark: file system micro-benchmarking in the kernelspace
+  - lock1: This benchmark stresses the kernel spinlock and is part of the will-it-scale
+  - Exim: mail server to stress kernelspace locks
+  - Metis: map-reduce library to stress readers-writer lock in the kernel
+  - Dedup: Parsec benchmark that stresses lock allocation in the usersapce
+  - Streamcluster: Parsec benchmark that has about 40% of `trylock` calls in the userspace
+  - Leveldb: Database benchmark that stresses a single lock in the userspace
+  - Extended version of RCU-table benchmark, used for nano-benchmarking locks. Please check the `kernel-syncstress` folder.
+
 
 ### Userspace Benchmark
 
