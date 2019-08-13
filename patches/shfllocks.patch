@@ -1,0 +1,1643 @@
+From 80ef0d888d3d1a664be035efc6d9b0b481872cef Mon Sep 17 00:00:00 2001
+From: Sanidhya Kashyap <sanidhya@gatech.edu>
+Date: Fri, 12 Oct 2018 15:06:28 -0400
+Subject: [PATCH] Shfllocks
+
+---
+ include/linux/rwsem.h         | 195 +++++++-----
+ kernel/Kconfig.locks          |   2 +-
+ kernel/locking/Makefile       |   2 +-
+ kernel/locking/mcs_spinlock.h |  13 +-
+ kernel/locking/percpu-rwsem.c |   4 +-
+ kernel/locking/qspinlock.c    | 345 ++++++++++++++++++++-
+ kernel/locking/rwsem.c        | 680 ++++++++++++++++++++++++++++++++++--------
+ kernel/locking/rwsem.h        |  96 ++----
+ 8 files changed, 1044 insertions(+), 293 deletions(-)
+
+diff --git a/include/linux/rwsem.h b/include/linux/rwsem.h
+index ab93b6e..040fbe0 100644
+--- a/include/linux/rwsem.h
++++ b/include/linux/rwsem.h
+@@ -16,59 +16,125 @@
+ #include <linux/spinlock.h>
+ #include <linux/atomic.h>
+ #include <linux/err.h>
+-#ifdef CONFIG_RWSEM_SPIN_ON_OWNER
+-#include <linux/osq_lock.h>
+-#endif
+ 
+ struct rw_semaphore;
+ 
+-#ifdef CONFIG_RWSEM_GENERIC_SPINLOCK
+-#include <linux/rwsem-spinlock.h> /* use a generic implementation */
+-#define __RWSEM_INIT_COUNT(name)	.count = RWSEM_UNLOCKED_VALUE
++struct rwaqm_node {
++	struct rwaqm_node *next;
++
++	union {
++		unsigned int locked;
++		struct {
++			u8  lstatus;
++			u8  sleader;
++			u16 wcount;
++		};
++	};
++
++	int nid;
++        struct task_struct *task;
++	struct rwaqm_node *last_visited;
++	int type;
++	int lock_status;
++} ____cacheline_aligned;
++
++struct rwmutex {
++	struct rwaqm_node *tail;
++	union {
++		atomic_t val;
++#ifdef __LITTLE_ENDIAN
++		struct {
++			u8 locked;
++			u8 no_stealing;
++			u8 rtype_cur;
++			u8 rtype_new;
++		};
++		struct {
++			u8 locked_no_stealing;
++		};
+ #else
+-/* All arch specific implementations share the same struct */
+-struct rw_semaphore {
+-	atomic_long_t count;
+-	struct list_head wait_list;
+-	raw_spinlock_t wait_lock;
+-#ifdef CONFIG_RWSEM_SPIN_ON_OWNER
+-	struct optimistic_spin_queue osq; /* spinner MCS lock */
+-	/*
+-	 * Write owner. Used as a speculative check to see
+-	 * if the owner is running on the cpu.
+-	 */
+-	struct task_struct *owner;
++		struct {
++			u8  __unused[2];
++			u8  no_stealing;
++			u8  locked;
++		};
++		struct {
++			u16 __unused2;
++			u16 locked_no_stealing;
++		};
+ #endif
+-#ifdef CONFIG_DEBUG_LOCK_ALLOC
+-	struct lockdep_map	dep_map;
++	};
++};
++
++struct rw_semaphore {
++	union {
++		atomic_long_t cnts;
++		struct {
++			u8 wlocked;
++			u8 rcount[7];
++		};
++	};
++	struct rwmutex wait_lock;
++#ifdef USE_GLOBAL_RDTABLE
++	uint64_t *skt_readers;
++	uint64_t *cpu_readers;
+ #endif
+ };
+ 
+-/*
+- * Setting bit 0 of the owner field with other non-zero bits will indicate
+- * that the rwsem is writer-owned with an unknown owner.
+- */
+-#define RWSEM_OWNER_UNKNOWN	((struct task_struct *)-1L)
++#define RWAQM_UNLOCKED_VALUE 	0x00000000L
++#define	RWAQM_W_WAITING	        0x100		/* A writer is waiting	   */
++#define	RWAQM_W_LOCKED	        0x0bf		/* A writer holds the lock */
++#define	RWAQM_W_WMASK	        0x1bf		/* Writer mask		   */
++#define	RWAQM_R_SHIFT	        9		/* Reader count shift	   */
++#define RWAQM_R_BIAS	        (1U << RWAQM_R_SHIFT)
++
++#define RWAQM_R_CNTR_CTR 0x1         /* Reader is centralized */
++#define RWAQM_R_NUMA_CTR 0x2 		/* Reader is per-socket */
++#define RWAQM_R_PCPU_CTR 0x4 		/* Reader is per-core */
++#define RWAQM_R_WRON_CTR 0x8 		/* All readers behave as writers */
++
++#define RWAQM_DCTR(v)        (((v) << 8) | (v))
++#define RWAQM_R_CNTR_DCTR    RWAQM_DCTR(RWAQM_R_CNTR_CTR)
++#define RWAQM_R_NUMA_DCTR    RWAQM_DCTR(RWAQM_R_NUMA_CTR)
++#define RWAQM_R_PCPU_DCTR    RWAQM_DCTR(RWAQM_R_PCPU_CTR)
++#define RWAQM_R_WRON_DCTR    RWAQM_DCTR(RWAQM_R_WRON_CTR)
++
++
++#define __RWMUTEX_INITIALIZER(lockname) 			\
++	{ .val = ATOMIC_INIT(0) 				\
++	, .tail = NULL }
++
++#define DEFINE_RWMUTEX(rwmutexname) \
++	struct rwmutex rwmutexname = __RWMUTEX_INITIALIZER(rwmutexname)
++
++
++#ifdef USE_GLOBAL_RDTABLE
++#define __INIT_TABLE(name) , .skt_readers = NULL, .cpu_readers = NULL
++#else
++#define __INIT_TABLE(name)
++#endif
++
++#ifdef SEPARATE_PARKING_LIST
++#define __INIT_SEPARATE_PLIST(name) 				\
++	, .wait_slock = __RAW_SPIN_LOCK_UNLOCKED(name.wait_slock) \
++	, .next = NULL
++#else
++#define __INIT_SEPARATE_PLIST(name)
++#endif
++
++#define __RWAQM_INIT_COUNT(name)  				\
++	.cnts = ATOMIC_LONG_INIT(RWAQM_UNLOCKED_VALUE)
+ 
+-extern struct rw_semaphore *rwsem_down_read_failed(struct rw_semaphore *sem);
+-extern struct rw_semaphore *rwsem_down_read_failed_killable(struct rw_semaphore *sem);
+-extern struct rw_semaphore *rwsem_down_write_failed(struct rw_semaphore *sem);
+-extern struct rw_semaphore *rwsem_down_write_failed_killable(struct rw_semaphore *sem);
+-extern struct rw_semaphore *rwsem_wake(struct rw_semaphore *);
+-extern struct rw_semaphore *rwsem_downgrade_wake(struct rw_semaphore *sem);
+ 
+ /* Include the arch specific part */
+-#include <asm/rwsem.h>
++/* #include <asm/rwsem.h> */
+ 
+ /* In all implementations count != 0 means locked */
+ static inline int rwsem_is_locked(struct rw_semaphore *sem)
+ {
+-	return atomic_long_read(&sem->count) != 0;
++	return atomic_long_read(&sem->cnts) != 0;
+ }
+ 
+-#define __RWSEM_INIT_COUNT(name)	.count = ATOMIC_LONG_INIT(RWSEM_UNLOCKED_VALUE)
+-#endif
+-
+ /* Common initializer macros and functions */
+ 
+ #ifdef CONFIG_DEBUG_LOCK_ALLOC
+@@ -84,11 +150,10 @@ static inline int rwsem_is_locked(struct rw_semaphore *sem)
+ #endif
+ 
+ #define __RWSEM_INITIALIZER(name)				\
+-	{ __RWSEM_INIT_COUNT(name),				\
+-	  .wait_list = LIST_HEAD_INIT((name).wait_list),	\
+-	  .wait_lock = __RAW_SPIN_LOCK_UNLOCKED(name.wait_lock)	\
+-	  __RWSEM_OPT_INIT(name)				\
+-	  __RWSEM_DEP_MAP_INIT(name) }
++	{ __RWAQM_INIT_COUNT(name)  				\
++	, __RWMUTEX_INITIALIZER((name).wait_lock) 		\
++	  __INIT_TABLE((name)) 					\
++	  __INIT_SEPARATE_PLIST((name)) }
+ 
+ #define DECLARE_RWSEM(name) \
+ 	struct rw_semaphore name = __RWSEM_INITIALIZER(name)
+@@ -111,7 +176,7 @@ do {								\
+  */
+ static inline int rwsem_is_contended(struct rw_semaphore *sem)
+ {
+-	return !list_empty(&sem->wait_list);
++	return sem->wait_lock.tail != NULL;
+ }
+ 
+ /*
+@@ -151,46 +216,12 @@ extern void up_write(struct rw_semaphore *sem);
+  */
+ extern void downgrade_write(struct rw_semaphore *sem);
+ 
+-#ifdef CONFIG_DEBUG_LOCK_ALLOC
+-/*
+- * nested locking. NOTE: rwsems are not allowed to recurse
+- * (which occurs if the same task tries to acquire the same
+- * lock instance multiple times), but multiple locks of the
+- * same lock class might be taken, if the order of the locks
+- * is always the same. This ordering rule can be expressed
+- * to lockdep via the _nested() APIs, but enumerating the
+- * subclasses that are used. (If the nesting relationship is
+- * static then another method for expressing nested locking is
+- * the explicit definition of lock class keys and the use of
+- * lockdep_set_class() at lock initialization time.
+- * See Documentation/locking/lockdep-design.txt for more details.)
+- */
+-extern void down_read_nested(struct rw_semaphore *sem, int subclass);
+-extern void down_write_nested(struct rw_semaphore *sem, int subclass);
+-extern int down_write_killable_nested(struct rw_semaphore *sem, int subclass);
+-extern void _down_write_nest_lock(struct rw_semaphore *sem, struct lockdep_map *nest_lock);
+-
+-# define down_write_nest_lock(sem, nest_lock)			\
+-do {								\
+-	typecheck(struct lockdep_map *, &(nest_lock)->dep_map);	\
+-	_down_write_nest_lock(sem, &(nest_lock)->dep_map);	\
+-} while (0);
+ 
+-/*
+- * Take/release a lock when not the owner will release it.
+- *
+- * [ This API should be avoided as much as possible - the
+- *   proper abstraction for this case is completions. ]
+- */
+-extern void down_read_non_owner(struct rw_semaphore *sem);
+-extern void up_read_non_owner(struct rw_semaphore *sem);
+-#else
+-# define down_read_nested(sem, subclass)		down_read(sem)
+-# define down_write_nest_lock(sem, nest_lock)	down_write(sem)
+-# define down_write_nested(sem, subclass)	down_write(sem)
+-# define down_write_killable_nested(sem, subclass)	down_write_killable(sem)
+-# define down_read_non_owner(sem)		down_read(sem)
+-# define up_read_non_owner(sem)			up_read(sem)
+-#endif
++# define down_read_nested(sem, subclass) down_read(sem)
++# define down_write_nested(sem, subclass) down_write(sem)
++# define down_write_killable_nested(sem, subclass) down_write_killable(sem)
++# define down_write_nest_lock(sem, nest_lock) down_write(sem)
++# define down_read_non_owner(sem) down_read(sem)
++# define up_read_non_owner(sem) up_read(sem)
+ 
+ #endif /* _LINUX_RWSEM_H */
+diff --git a/kernel/Kconfig.locks b/kernel/Kconfig.locks
+index 84d882f..9b11c77 100644
+--- a/kernel/Kconfig.locks
++++ b/kernel/Kconfig.locks
+@@ -228,7 +228,7 @@ config MUTEX_SPIN_ON_OWNER
+ 	depends on SMP && ARCH_SUPPORTS_ATOMIC_RMW
+ 
+ config RWSEM_SPIN_ON_OWNER
+-       def_bool y
++       def_bool n
+        depends on SMP && RWSEM_XCHGADD_ALGORITHM && ARCH_SUPPORTS_ATOMIC_RMW
+ 
+ config LOCK_SPIN_ON_OWNER
+diff --git a/kernel/locking/Makefile b/kernel/locking/Makefile
+index 392c7f2..242a767 100644
+--- a/kernel/locking/Makefile
++++ b/kernel/locking/Makefile
+@@ -26,7 +26,7 @@ obj-$(CONFIG_DEBUG_RT_MUTEXES) += rtmutex-debug.o
+ obj-$(CONFIG_DEBUG_SPINLOCK) += spinlock.o
+ obj-$(CONFIG_DEBUG_SPINLOCK) += spinlock_debug.o
+ obj-$(CONFIG_RWSEM_GENERIC_SPINLOCK) += rwsem-spinlock.o
+-obj-$(CONFIG_RWSEM_XCHGADD_ALGORITHM) += rwsem-xadd.o
++# obj-$(CONFIG_RWSEM_XCHGADD_ALGORITHM) += rwsem-xadd.o
+ obj-$(CONFIG_QUEUED_RWLOCKS) += qrwlock.o
+ obj-$(CONFIG_LOCK_TORTURE_TEST) += locktorture.o
+ obj-$(CONFIG_WW_MUTEX_SELFTEST) += test-ww_mutex.o
+diff --git a/kernel/locking/mcs_spinlock.h b/kernel/locking/mcs_spinlock.h
+index 5e10153..7caf749 100644
+--- a/kernel/locking/mcs_spinlock.h
++++ b/kernel/locking/mcs_spinlock.h
+@@ -17,8 +17,19 @@
+ 
+ struct mcs_spinlock {
+ 	struct mcs_spinlock *next;
+-	int locked; /* 1 if lock acquired */
++	union {
++		int locked; /* 1 if lock acquired */
++		struct {
++			u8 lstatus;
++			u8 sleader;
++			u16 wcount;
++		};
++	};
+ 	int count;  /* nesting count, see qspinlock.c */
++
++	int nid;
++	int cid;
++	struct mcs_spinlock *last_visited;
+ };
+ 
+ #ifndef arch_mcs_spin_lock_contended
+diff --git a/kernel/locking/percpu-rwsem.c b/kernel/locking/percpu-rwsem.c
+index 883cf1b..8cccd16 100644
+--- a/kernel/locking/percpu-rwsem.c
++++ b/kernel/locking/percpu-rwsem.c
+@@ -82,9 +82,9 @@ int __percpu_down_read(struct percpu_rw_semaphore *sem, int try)
+ 	/*
+ 	 * Avoid lockdep for the down/up_read() we already have them.
+ 	 */
+-	__down_read(&sem->rw_sem);
++	down_read(&sem->rw_sem);
+ 	this_cpu_inc(*sem->read_count);
+-	__up_read(&sem->rw_sem);
++	up_read(&sem->rw_sem);
+ 
+ 	preempt_disable();
+ 	return 1;
+diff --git a/kernel/locking/qspinlock.c b/kernel/locking/qspinlock.c
+index bfaeb05..a88e0c1 100644
+--- a/kernel/locking/qspinlock.c
++++ b/kernel/locking/qspinlock.c
+@@ -29,8 +29,10 @@
+ #include <linux/hardirq.h>
+ #include <linux/mutex.h>
+ #include <linux/prefetch.h>
++#include <linux/topology.h>
+ #include <asm/byteorder.h>
+ #include <asm/qspinlock.h>
++#include <linux/random.h>
+ 
+ /*
+  * Include queued spinlock statistics code
+@@ -103,11 +105,292 @@
+  */
+ static DEFINE_PER_CPU_ALIGNED(struct mcs_spinlock, mcs_nodes[MAX_NODES]);
+ 
++/* Per-CPU pseudo-random number seed */
++static DEFINE_PER_CPU(u32, seed);
++
++static inline void set_sleader(struct mcs_spinlock *node, struct mcs_spinlock *qend)
++{
++	smp_store_release(&node->sleader, 1);
++	if (qend != node)
++		smp_store_release(&node->last_visited, qend);
++}
++
++static inline void clear_sleader(struct mcs_spinlock *node)
++{
++	node->sleader = 0;
++}
++
++static inline void set_waitcount(struct mcs_spinlock *node, int count)
++{
++	smp_store_release(&node->wcount, count);
++}
++
++#define AQS_MAX_LOCK_COUNT      256
++#define _Q_LOCKED_PENDING_MASK (_Q_LOCKED_MASK | _Q_PENDING_MASK)
++
++/*
++ * xorshift function for generating pseudo-random numbers:
++ * https://en.wikipedia.org/wiki/Xorshift
++ */
++static inline u32 xor_random(void)
++{
++	u32 v;
++
++	v = this_cpu_read(seed);
++	if (v == 0)
++		get_random_bytes(&v, sizeof(u32));
++
++	v ^= v << 6;
++	v ^= v >> 21;
++	v ^= v << 7;
++	this_cpu_write(seed, v);
++
++	return v;
++}
++
++/*
++ * Return false with probability 1 / @range.
++ * @range must be a power of 2.
++ */
++#define INTRA_SOCKET_HANDOFF_PROB_ARG	0x10000
++
++static bool probably(void)
++{
++	u32 v;
++	return xor_random() & (INTRA_SOCKET_HANDOFF_PROB_ARG - 1);
++	v = this_cpu_read(seed);
++	if (v >= 2048) {
++		this_cpu_write(seed, 0);
++		return false;
++	}
++	this_cpu_inc(seed);
++	return true;
++}
++
++
++/*
++ * This function is responsible for aggregating waiters in a
++ * particular socket in one place up to a certain batch count.
++ * The invariant is that the shuffle leaders always start from
++ * the very next waiter and they are selected ahead in the queue,
++ * if required. Moreover, none of the waiters will be behind the
++ * shuffle leader, they are always ahead in the queue.
++ * Currently, only one shuffle leader is chosen.
++ * TODO: Another aggressive approach could be to use HOH locking
++ * for n shuffle leaders, in which n corresponds to the number
++ * of sockets.
++ */
++static void shuffle_waiters(struct qspinlock *lock, struct mcs_spinlock *node,
++			    int is_next_waiter)
++{
++	struct mcs_spinlock *curr, *prev, *next, *last, *sleader, *qend;
++	int nid;
++	int curr_locked_count;
++	int one_shuffle = false;
++
++	prev = smp_load_acquire(&node->last_visited);
++	if (!prev)
++		prev = node;
++	last = node;
++	curr = NULL;
++	next = NULL;
++	sleader = NULL;
++	qend = NULL;
++
++	nid = node->nid;
++	curr_locked_count = node->wcount;
++
++	barrier();
++
++	/*
++	 * If the wait count is 0, then increase node->wcount
++	 * to 1 to avoid coming it again.
++	 */
++	if (curr_locked_count == 0) {
++		set_waitcount(node, ++curr_locked_count);
++	}
++
++	/*
++         * Our constraint is that we will reset every shuffle
++         * leader and the new one will be selected at the end,
++         * if any.
++         *
++         * This one here is to avoid the confusion of having
++         * multiple shuffling leaders.
++         */
++	clear_sleader(node);
++
++	/*
++         * In case the curr_locked_count has crossed a
++         * threshold, which is certainly impossible in this
++         * design, then load the very next of the node and pass
++         * the shuffling responsibility to that @next.
++         */
++	/* if (curr_locked_count >= AQS_MAX_LOCK_COUNT) { */
++	if (!probably()) {
++		sleader = READ_ONCE(node->next);
++		goto out;
++	}
++
++
++	/*
++         * In this loop, we try to shuffle the wait queue at
++         * least once to allow waiters from the same socket to
++         * have no cache-line bouncing. This shuffling is
++         * associated in two aspects:
++         * 1) when both adjacent nodes belong to the same socket
++         * 2) when there is an actual shuffling that happens.
++         *
++         * Currently, the approach is very conservative. If we
++         * miss any of the elements while traversing, we return
++         * back.
++         *
++         * TODO: We can come up with some aggressive strategy to
++         * form long chains, which we are yet to explore
++         *
++         * The way the algorithm works is that it tries to have
++         * at least two pointers: pred and curr, in which
++         * curr = pred->next. If curr and pred are in the same
++         * socket, then no need to shuffle, just update pred to
++         * point to curr.
++         * If that is not the case, then try to find the curr
++         * whose node id is same as the @node's node id. On
++         * finding that, we also try to get the @next, which is
++         * next = curr->next; which we use all of them to
++         * shuffle them wrt @last.
++         * @last holds the latest shuffled element in the wait
++         * queue, which is updated on each shuffle and is most
++         * likely going to be next shuffle leader.
++         */
++	for (;;) {
++		/*
++		 * Get the curr first
++		 */
++		curr = READ_ONCE(prev->next);
++
++		/*
++                 * Now, right away we can quit the loop if curr
++                 * is NULL or is at the end of the wait queue
++                 * and choose @last as the sleader.
++                 */
++		if (!curr) {
++			sleader = last;
++			qend = prev;
++			break;
++		}
++
++	     recheck_curr_tail:
++                /*
++                 * If we are the last one in the tail, then
++                 * we cannot do anything, we should return back
++                 * while selecting the next sleader as the last one
++                 */
++		if (curr->cid == (atomic_read(&lock->val) >> _Q_TAIL_CPU_OFFSET)) {
++			sleader = last;
++			qend = prev;
++			break;
++		}
++
++		/* got the current for sure */
++
++		/* Check if curr->nid is same as nid */
++		if (curr->nid == nid) {
++
++			/*
++			 * if prev->nid == curr->nid, then
++			 * just update the last and prev
++			 * and proceed forward
++			 */
++			if (prev->nid == nid) {
++				set_waitcount(curr, curr_locked_count);
++
++				last = curr;
++				prev = curr;
++				one_shuffle = true;
++
++			} else {
++				/* prev->nid is not same, then we need
++				 * to find next and move @curr to
++				 * last->next, while linking @prev->next
++				 * to next.
++				 *
++				 * NOTE: We do not update @prev here
++				 * because @curr has been already moved
++				 * out.
++				 */
++				next = READ_ONCE(curr->next);
++				if (!next) {
++					sleader = last;
++					qend = prev;
++					/* qend = curr; */
++					break;
++				}
++
++				/*
++                                 * Since, we have curr and next,
++                                 * we mark the curr that it has been
++                                 * shuffled and shuffle the queue
++                                 */
++				set_waitcount(curr, curr_locked_count);
++
++/*
++ *                                                 (1)
++ *                                    (3)       ----------
++ *                          -------------------|--\      |
++ *                        /                    |   v     v
++ *   ----          ----   |  ----        ----/   ----   ----
++ *  | SL | -> ... |Last| -> | X  |....->|Prev|->|Curr|->|Next|->....
++ *   ----          ----  ->  ----        ----    ----  | ----
++ *                      /          (2)                /
++ *                      -----------------------------
++ *                              |
++ *                              V
++ *   ----          ----      ----      ----        ----    ----
++ *  | SL | -> ... |Last| -> |Curr| -> | X  |....->|Prev|->|Next|->....
++ *   ----          ----      ----      ----        ----    ----
++ *
++ */
++				prev->next = next;
++				curr->next = last->next;
++				last->next = curr;
++				smp_wmb();
++
++				last = curr;
++				curr = next;
++				one_shuffle = true;
++
++				goto recheck_curr_tail;
++			}
++		} else
++			prev = curr;
++
++		/*
++		 * Currently, we only exit once we have at least
++		 * one shuffler if the shuffling leader is the
++		 * very next lock waiter.
++		 * TODO: This approach can be further optimized.
++		 */
++		if (one_shuffle) {
++			if ((is_next_waiter &&
++			     !(atomic_read_acquire(&lock->val) & _Q_LOCKED_PENDING_MASK)) ||
++			    (!is_next_waiter && READ_ONCE(node->lstatus))) {
++				sleader = last;
++				qend = prev;
++				break;
++			}
++		}
++	}
++
++     out:
++	if (sleader) {
++		set_sleader(sleader, qend);
++	}
++}
++
+ /*
+  * We must be able to distinguish between no-tail and the tail at 0:0,
+  * therefore increment the cpu number by one.
+  */
+-
+ static inline __pure u32 encode_tail(int cpu, int idx)
+ {
+ 	u32 tail;
+@@ -129,8 +412,6 @@ static inline __pure struct mcs_spinlock *decode_tail(u32 tail)
+ 	return per_cpu_ptr(&mcs_nodes[idx], cpu);
+ }
+ 
+-#define _Q_LOCKED_PENDING_MASK (_Q_LOCKED_MASK | _Q_PENDING_MASK)
+-
+ #if _Q_PENDING_BITS == 8
+ /**
+  * clear_pending - clear the pending bit.
+@@ -296,14 +577,15 @@ void queued_spin_lock_slowpath(struct qspinlock *lock, u32 val)
+ 	struct mcs_spinlock *prev, *next, *node;
+ 	u32 old, tail;
+ 	int idx;
++        int cid;
+ 
+ 	BUILD_BUG_ON(CONFIG_NR_CPUS >= (1U << _Q_TAIL_CPU_BITS));
+ 
+-	if (pv_enabled())
+-		goto pv_queue;
++	/* if (pv_enabled()) */
++	/* 	goto pv_queue; */
+ 
+-	if (virt_spin_lock(lock))
+-		return;
++	/* if (virt_spin_lock(lock)) */
++	/* 	return; */
+ 
+ 	/*
+ 	 * Wait for in-progress pending->locked hand-overs with a bounded
+@@ -373,7 +655,8 @@ void queued_spin_lock_slowpath(struct qspinlock *lock, u32 val)
+ pv_queue:
+ 	node = this_cpu_ptr(&mcs_nodes[0]);
+ 	idx = node->count++;
+-	tail = encode_tail(smp_processor_id(), idx);
++        cid = smp_processor_id();
++	tail = encode_tail(cid, idx);
+ 
+ 	node += idx;
+ 
+@@ -384,6 +667,9 @@ void queued_spin_lock_slowpath(struct qspinlock *lock, u32 val)
+ 	 */
+ 	barrier();
+ 
++        node->cid = cid + 1;
++        node->nid = numa_node_id();
++        node->last_visited = NULL;
+ 	node->locked = 0;
+ 	node->next = NULL;
+ 	pv_init_node(node);
+@@ -424,7 +710,18 @@ void queued_spin_lock_slowpath(struct qspinlock *lock, u32 val)
+ 		WRITE_ONCE(prev->next, node);
+ 
+ 		pv_wait_node(node, prev);
+-		arch_mcs_spin_lock_contended(&node->locked);
++		/* arch_mcs_spin_lock_contended(&node->locked); */
++		for (;;) {
++			int __val = READ_ONCE(node->lstatus);
++			if (__val)
++				break;
++
++			if (READ_ONCE(node->sleader))
++				shuffle_waiters(lock, node, false);
++
++			cpu_relax();
++		}
++		smp_acquire__after_ctrl_dep();
+ 
+ 		/*
+ 		 * While waiting for the MCS lock, the next pointer may have
+@@ -432,9 +729,9 @@ void queued_spin_lock_slowpath(struct qspinlock *lock, u32 val)
+ 		 * the next pointer & prefetch the cacheline for writing
+ 		 * to reduce latency in the upcoming MCS unlock operation.
+ 		 */
+-		next = READ_ONCE(node->next);
+-		if (next)
+-			prefetchw(next);
++		/* next = READ_ONCE(node->next); */
++		/* if (next) */
++		/* 	prefetchw(next); */
+ 	}
+ 
+ 	/*
+@@ -458,10 +755,24 @@ void queued_spin_lock_slowpath(struct qspinlock *lock, u32 val)
+ 	 * If PV isn't active, 0 will be returned instead.
+ 	 *
+ 	 */
+-	if ((val = pv_wait_head_or_lock(lock, node)))
+-		goto locked;
++	/* if ((val = pv_wait_head_or_lock(lock, node))) */
++	/* 	goto locked; */
+ 
+-	val = atomic_cond_read_acquire(&lock->val, !(VAL & _Q_LOCKED_PENDING_MASK));
++	/* val = atomic_cond_read_acquire(&lock->val, !(VAL & _Q_LOCKED_PENDING_MASK)); */
++	for (;;) {
++		int wcount;
++
++		val = atomic_read(&lock->val);
++		if (!(val & _Q_LOCKED_PENDING_MASK))
++			break;
++
++		wcount = READ_ONCE(node->wcount);
++		if (!wcount ||
++		    (wcount && node->sleader))
++			shuffle_waiters(lock, node, true);
++		cpu_relax();
++	}
++	smp_acquire__after_ctrl_dep();
+ 
+ locked:
+ 	/*
+@@ -491,10 +802,12 @@ void queued_spin_lock_slowpath(struct qspinlock *lock, u32 val)
+ 	/*
+ 	 * contended path; wait for next if not observed yet, release.
+ 	 */
++        next = READ_ONCE(node->next);
+ 	if (!next)
+ 		next = smp_cond_load_relaxed(&node->next, (VAL));
+ 
+-	arch_mcs_spin_unlock_contended(&next->locked);
++	/* arch_mcs_spin_unlock_contended(&next->locked); */
++        smp_store_release(&next->lstatus, 1);
+ 	pv_kick_node(lock, next);
+ 
+ release:
+diff --git a/kernel/locking/rwsem.c b/kernel/locking/rwsem.c
+index 776308d..e32fde9 100644
+--- a/kernel/locking/rwsem.c
++++ b/kernel/locking/rwsem.c
+@@ -12,213 +12,643 @@
+ #include <linux/export.h>
+ #include <linux/rwsem.h>
+ #include <linux/atomic.h>
++#include <linux/random.h>
++#include <linux/smp.h>
++#include <linux/percpu.h>
++#include <linux/sched/stat.h>
++#include <linux/topology.h>
+ 
+ #include "rwsem.h"
+ 
++static int __aqm_lock_slowpath(struct rwmutex *lock, long state, int is_reader);
++
++static void __rwmutex_init(struct rwmutex *lock)
++{
++	atomic_set(&lock->val, 0);
++	lock->tail = NULL;
++}
++
+ /*
+- * lock for reading
++ * Actual trylock that will work on any unlocked state.
+  */
+-void __sched down_read(struct rw_semaphore *sem)
++static inline bool __rwmutex_trylock(struct rwmutex *lock)
+ {
+-	might_sleep();
+-	rwsem_acquire_read(&sem->dep_map, 0, 0, _RET_IP_);
+-
+-	LOCK_CONTENDED(sem, __down_read_trylock, __down_read);
+-	rwsem_set_reader_owned(sem);
++	return (atomic_cmpxchg(&lock->val, 0, 1) == 0);
+ }
+ 
+-EXPORT_SYMBOL(down_read);
+-
+-int __sched down_read_killable(struct rw_semaphore *sem)
++static inline void rwmutex_lock(struct rwmutex *lock, int is_reader)
+ {
+-	might_sleep();
+-	rwsem_acquire_read(&sem->dep_map, 0, 0, _RET_IP_);
++	if (likely(cmpxchg(&lock->locked_no_stealing, 0, 1) == 0))
++		return;
+ 
+-	if (LOCK_CONTENDED_RETURN(sem, __down_read_trylock, __down_read_killable)) {
+-		rwsem_release(&sem->dep_map, 1, _RET_IP_);
+-		return -EINTR;
+-	}
++	__aqm_lock_slowpath(lock, TASK_UNINTERRUPTIBLE, is_reader);
++}
+ 
+-	rwsem_set_reader_owned(sem);
+-	return 0;
++static inline void rwmutex_unlock(struct rwmutex *lock)
++{
++	xchg(&lock->locked, 0);
+ }
+ 
+-EXPORT_SYMBOL(down_read_killable);
++static DEFINE_PER_CPU(u32, seed);
+ 
+ /*
+- * trylock for reading -- returns 1 if successful, 0 if contention
++ * Controls the probability for intra-socket lock hand-off. It can be
++ * tuned and depend, e.g., on the number of CPUs per socket. For now,
++ * choose a value that provides reasonable long-term fairness without
++ * sacrificing performance compared to a version that does not have any
++ * fairness guarantees.
+  */
+-int down_read_trylock(struct rw_semaphore *sem)
+-{
+-	int ret = __down_read_trylock(sem);
++#ifndef INTRA_SOCKET_HANDOFF_PROB_ARG
++#define INTRA_SOCKET_HANDOFF_PROB_ARG  0x10000
++#endif
+ 
+-	if (ret == 1) {
+-		rwsem_acquire_read(&sem->dep_map, 0, 1, _RET_IP_);
+-		rwsem_set_reader_owned(sem);
+-	}
+-	return ret;
+-}
++#ifndef THRESHOLD
++#define THRESHOLD (0xffff)
++#endif
+ 
+-EXPORT_SYMBOL(down_read_trylock);
++#ifndef UNLOCK_COUNT_THRESHOLD
++#define UNLOCK_COUNT_THRESHOLD 1024
++#endif
+ 
+-/*
+- * lock for writing
+- */
+-void __sched down_write(struct rw_semaphore *sem)
++static inline uint32_t xor_random(void)
+ {
+-	might_sleep();
+-	rwsem_acquire(&sem->dep_map, 0, 0, _RET_IP_);
++        u32 v = this_cpu_read(seed);
++
++        if (v == 0)
++		get_random_bytes(&v, sizeof(u32));
+ 
+-	LOCK_CONTENDED(sem, __down_write_trylock, __down_write);
+-	rwsem_set_owner(sem);
++        v ^= v << 6;
++        v ^= (u32)(v) >> 21;
++        v ^= v << 7;
++        this_cpu_write(seed, v);
++
++        return v & (UNLOCK_COUNT_THRESHOLD - 1);
++	/* return v; */
+ }
+ 
+-EXPORT_SYMBOL(down_write);
++static inline bool probably(unsigned int range)
++{
++        return xor_random() & (range - 1);
++}
+ 
+-/*
+- * lock for writing
+- */
+-int __sched down_write_killable(struct rw_semaphore *sem)
++static inline void enable_stealing(struct rwmutex *lock)
+ {
+-	might_sleep();
+-	rwsem_acquire(&sem->dep_map, 0, 0, _RET_IP_);
++        atomic_andnot(_RWAQ_MCS_NOSTEAL_VAL, &lock->val);
++}
+ 
+-	if (LOCK_CONTENDED_RETURN(sem, __down_write_trylock, __down_write_killable)) {
+-		rwsem_release(&sem->dep_map, 1, _RET_IP_);
+-		return -EINTR;
+-	}
++static inline void unlock_and_enable_stealing(struct rwmutex *lock)
++{
++        WRITE_ONCE(lock->locked_no_stealing, 0);
++}
+ 
+-	rwsem_set_owner(sem);
+-	return 0;
++static inline void disable_stealing(struct rwmutex *lock)
++{
++        atomic_fetch_or_acquire(_RWAQ_MCS_NOSTEAL_VAL, &lock->val);
+ }
+ 
+-EXPORT_SYMBOL(down_write_killable);
++static inline u8 is_stealing_disabled(struct rwmutex *lock)
++{
++        return smp_load_acquire(&lock->no_stealing);
++}
+ 
+-/*
+- * trylock for writing -- returns 1 if successful, 0 if contention
+- */
+-int down_write_trylock(struct rw_semaphore *sem)
++static inline void set_sleader(struct rwaqm_node *node, struct rwaqm_node *qend)
+ {
+-	int ret = __down_write_trylock(sem);
++        smp_store_release(&node->sleader, 1);
++        if (qend != node)
++                smp_store_release(&node->last_visited, qend);
++}
+ 
+-	if (ret == 1) {
+-		rwsem_acquire(&sem->dep_map, 0, 1, _RET_IP_);
+-		rwsem_set_owner(sem);
+-	}
++static inline void clear_sleader(struct rwaqm_node *node)
++{
++        node->sleader = 0;
++}
+ 
+-	return ret;
++static inline void set_waitcount(struct rwaqm_node *node, int count)
++{
++        smp_store_release(&node->wcount, count);
+ }
+ 
+-EXPORT_SYMBOL(down_write_trylock);
++static inline void wake_up_waiter(struct rwaqm_node *node)
++{
++	wake_up_process(node->task);
++}
+ 
+-/*
+- * release a read lock
+- */
+-void up_read(struct rw_semaphore *sem)
++static inline void schedule_out_curr_task(void)
+ {
+-	rwsem_release(&sem->dep_map, 1, _RET_IP_);
+-	DEBUG_RWSEMS_WARN_ON(sem->owner != RWSEM_READER_OWNED);
++        schedule_preempt_disabled();
++}
+ 
+-	__up_read(sem);
++static int force_update_node(struct rwaqm_node *node, u8 state)
++{
++#if 1
++        if (cmpxchg(&node->lstatus, _RWAQ_MCS_STATUS_PWAIT,
++                    state) == _RWAQ_MCS_STATUS_PWAIT)
++                return false;
++        /**
++         * OUCH: That is going to hurt as I am doing two
++         * atomic instructions just for the sake of avoiding
++         * the wakeup in the worst case scenario i.e., waking
++         * up the VERY NEXT WAITER.
++         **/
++        if (cmpxchg(&node->lstatus, _RWAQ_MCS_STATUS_PARKED,
++                    state) == _RWAQ_MCS_STATUS_PARKED) {
++                wake_up_waiter(node);
++                return true;
++        }
++#endif
++        return false;
+ }
+ 
+-EXPORT_SYMBOL(up_read);
++static inline void park_waiter(struct rwaqm_node *node, long state)
++{
++	set_current_state(state);
++#if 1
++        if (cmpxchg(&node->lstatus, _RWAQ_MCS_STATUS_PWAIT,
++                    _RWAQ_MCS_STATUS_PARKED) == _RWAQ_MCS_STATUS_PWAIT) {
++		schedule_out_curr_task();
++	}
++#endif
++        set_current_state(TASK_RUNNING);
++}
+ 
+-/*
+- * release a write lock
+- */
+-void up_write(struct rw_semaphore *sem)
++static inline void shuffle_waiters(struct rwmutex *lock, struct rwaqm_node *node,
++				   int is_next_waiter)
+ {
+-	rwsem_release(&sem->dep_map, 1, _RET_IP_);
+-	DEBUG_RWSEMS_WARN_ON(sem->owner != current);
++        struct rwaqm_node *curr, *prev, *next, *last, *sleader, *qend;
++        int nid;
++        int curr_locked_count;
++        int one_shuffle = false;
++        int woke_up_one = false;
++
++        prev = smp_load_acquire(&node->last_visited);
++        if (!prev)
++                prev = node;
++        last = node;
++        curr = NULL;
++        next = NULL;
++        sleader = NULL;
++        qend = NULL;
++
++        nid = node->nid;
++        curr_locked_count = node->wcount;
++
++        barrier();
++
++        cmpxchg(&node->lstatus, _RWAQ_MCS_STATUS_PWAIT, _RWAQ_MCS_STATUS_UNPWAIT);
++
++        /*
++         * If the wait count is 0, then increase node->wcount
++         * to 1 to avoid coming it again.
++         */
++        if (curr_locked_count == 0) {
++                set_waitcount(node, ++curr_locked_count);
++        }
++
++        /*
++         * Our constraint is that we will reset every shuffle
++         * leader and the new one will be selected at the end,
++         * if any.
++         *
++         * This one here is to avoid the confusion of having
++         * multiple shuffling leaders.
++         */
++        clear_sleader(node);
++
++        /*
++         * In case the curr_locked_count has crossed a
++         * threshold, which is certainly impossible in this
++         * design, then load the very next of the node and pass
++         * the shuffling responsibility to that @next.
++         */
++#ifdef USE_COUNTER
++        if (curr_locked_count >= _AQ_MAX_LOCK_COUNT)
++#else
++	if (!probably(INTRA_SOCKET_HANDOFF_PROB_ARG))
++#endif
++	{
++                sleader = smp_load_acquire(&node->next);
++                goto out;
++        }
++
++        /*
++         * In this loop, we try to shuffle the wait queue at
++         * least once to allow waiters from the same socket to
++         * have no cache-line bouncing. This shuffling is
++         * associated in two aspects:
++         * 1) when both adjacent nodes belong to the same socket
++         * 2) when there is an actual shuffling that happens.
++         *
++         * Currently, the approach is very conservative. If we
++         * miss any of the elements while traversing, we return
++         * back.
++         */
++        for (;;) {
++                /*
++                 * Get the curr first
++                 */
++                curr = READ_ONCE(prev->next);
++
++                /*
++                 * Now, right away we can quit the loop if curr
++                 * is NULL or is at the end of the wait queue
++                 * and choose @last as the sleader.
++                 */
++                if (!curr) {
++                        /* sleader = last; */
++                        /* qend = prev; /1* Until prev, I am updated *1/ */
++                        break;
++                }
++
++                /*
++                 * If we are the last one in the tail, then
++                 * we cannot do anything, we should return back
++                 * while selecting the next sleader as the last one
++                 */
++                if (curr == READ_ONCE(lock->tail)) {
++                        /* sleader = last; */
++                        /* qend = prev; */
++                        break;
++                }
++
++                /* got the current for sure */
++
++                /* Check if curr->nid is same as nid */
++                if (curr->nid == nid && curr->type == false) {
++                        /*
++                         * if prev->nid == curr->nid, then
++                         * just update the last and prev
++                         * and proceed forward
++                         */
++                        if (prev->nid == nid) {
++#ifdef USE_COUNTER
++				set_waitcount(curr, ++curr_locked_count);
++#else
++				set_waitcount(curr, curr_locked_count);
++#endif
+ 
+-	rwsem_clear_owner(sem);
+-	__up_write(sem);
+-}
++                                last = curr;
++                                prev = curr;
++                                one_shuffle = true;
++
++				woke_up_one = force_update_node(curr,
++                                                        _RWAQ_MCS_STATUS_UNPWAIT);
++
++				if (woke_up_one && need_resched()) {
++					__set_current_state(TASK_RUNNING);
++					schedule_out_curr_task();
++				}
++                        }
++			else {
++                                /* prev->nid is not same, then we need
++                                 * to find next and move @curr to
++                                 * last->next, while linking @prev->next
++                                 * to next.
++                                 *
++                                 * NOTE: We do not update @prev here
++                                 * because @curr has been already moved
++                                 * out.
++                                 */
++                                next = READ_ONCE(curr->next);
++                                if (!next) {
++					/* XXX */
++                                        /* sleader = last; */
++                                        break;
++                                }
++
++                                /*
++                                 * Since, we have curr and next,
++                                 * we mark the curr that it has been
++                                 * shuffled and shuffle the queue
++                                 */
++#ifdef USE_COUNTER
++				set_waitcount(curr, ++curr_locked_count);
++#else
++				set_waitcount(curr, curr_locked_count);
++#endif
+ 
+-EXPORT_SYMBOL(up_write);
++				smp_store_release(&prev->next, next);
++				smp_store_release(&curr->next, last->next);
++				smp_store_release(&last->next, curr);
++
++                                woke_up_one = force_update_node(curr,
++                                               _RWAQ_MCS_STATUS_UNPWAIT);
++                                last = curr;
++                                /* curr = next; */
++				prev = next;
++                                one_shuffle = true;
++
++                        }
++                } else
++                        prev = curr;
++
++                if (one_shuffle &&
++		    ((is_next_waiter && !READ_ONCE(lock->locked)) ||
++		     (!is_next_waiter && smp_load_acquire(&node->lstatus)
++		      				== _RWAQ_MCS_STATUS_LOCKED))) {
++			sleader = last;
++                        /* qend = prev; */
++                        break;
++                }
++
++		if (need_resched()) {
++			__set_current_state(TASK_RUNNING);
++			schedule_out_curr_task();
++		}
++        }
++
++     out:
++        if (sleader) {
++                set_sleader(sleader, qend);
++        }
++}
+ 
+-/*
+- * downgrade write lock to read lock
+- */
+-void downgrade_write(struct rw_semaphore *sem)
++static int __aqm_lock_slowpath(struct rwmutex *lock, long state, int is_reader)
+ {
+-	lock_downgrade(&sem->dep_map, _RET_IP_);
+-	DEBUG_RWSEMS_WARN_ON(sem->owner != current);
++	struct rwaqm_node snode ____cacheline_aligned;
++	struct rwaqm_node *node = &snode;
++        struct rwaqm_node *prev, *next;
++        u8 plstatus;
++	u16 wcount = 0;
++	u8 sleader = true;
++
++        preempt_disable();
++	barrier();
++        node->next = NULL;
++        node->last_visited = NULL;
++        node->locked = _RWAQ_MCS_STATUS_PWAIT;
++        node->nid = numa_node_id();
++        node->task = current;
++	node->type = is_reader;
++
++        /*
++         * Ensure that the initialisation of @node is complete before we
++         * publish the updated tail via xchg_tail() and potentially link
++         * @node into the waitqueue via WRITE_ONCE(prev->next, node) below.
++         */
++        smp_wmb();
++
++        prev = xchg(&lock->tail, node);
++        next = NULL;
++
++        if (prev) {
++
++                WRITE_ONCE(prev->next, node);
++
++                for (;;) {
++			if (smp_load_acquire(&node->lstatus) ==
++			    				_RWAQ_MCS_STATUS_LOCKED)
++				break;
++
++			/* if (READ_ONCE(node->sleader)) { */
++			/* 	shuffle_waiters(lock, node, false); */
++			/* } */
++
++                        if (need_resched()) {
++                                if (single_task_running()) {
++                                        __set_current_state(TASK_RUNNING);
++                                        schedule_out_curr_task();
++                                } else {
++                                        park_waiter(node, state);
++                                }
++                        }
++                        cpu_relax();
++                }
++        } else {
++		/* disable_stealing(lock); */
++	}
+ 
+-	rwsem_set_reader_owned(sem);
+-	__downgrade_write(sem);
++        /*
++         * we are now the very next waiters, all we have to do is
++         * to wait for the @lock->locked to become 0, i.e. unlocked.
++         * In the meantime, we will try to be shuffle leader if possible
++         * and at least find someone in my socket.
++         */
++
++	wcount = smp_load_acquire(&node->wcount);
++	if (wcount)
++		sleader = smp_load_acquire(&node->sleader);
++	else
++		sleader = true;
++        for(;;) {
++
++                if (!smp_load_acquire(&lock->locked))
++                        break;
++
++		if (need_resched())
++			schedule_out_curr_task();
++
++		if (sleader) {
++			sleader = false;
++			/* enable_stealing(lock); */
++			shuffle_waiters(lock, node, true);
++			/* disable_stealing(lock); */
++		}
++        }
++
++        for (;;) {
++                if (cmpxchg(&lock->locked, 0, 1) == 0) {
++                        /* lock->nid = numa_node_id(); */
++                        break;
++                }
++
++                while (smp_load_acquire(&lock->locked)) {
++
++			if (need_resched())
++				schedule_out_curr_task();
++
++			cpu_relax();
++		}
++        }
++
++        next = smp_load_acquire(&node->next);
++        if (!next) {
++                if (cmpxchg(&lock->tail, node, NULL) == node) {
++			enable_stealing(lock);
++                        goto out;
++                }
++
++                for (;;) {
++                        next = READ_ONCE(node->next);
++                        if (next)
++                                break;
++
++			if (need_resched())
++				schedule_out_curr_task();
++
++                        cpu_relax();
++                }
++        }
++
++        /*
++         * Notify the very next waiter
++         */
++        plstatus = xchg_release(&next->lstatus, _RWAQ_MCS_STATUS_LOCKED);
++        if (unlikely(plstatus == _RWAQ_MCS_STATUS_PARKED)) {
++                wake_up_waiter(next);
++        }
++
++     out:
++        preempt_enable();
++	return 0;
+ }
+ 
+-EXPORT_SYMBOL(downgrade_write);
++static inline void aqm_read_lock_slowpath(struct rw_semaphore *sem)
++{
++	atomic_long_sub(RWAQM_R_BIAS, &sem->cnts);
+ 
+-#ifdef CONFIG_DEBUG_LOCK_ALLOC
++	rwmutex_lock(&sem->wait_lock, true);
++	atomic_long_add(RWAQM_R_BIAS, &sem->cnts);
+ 
+-void down_read_nested(struct rw_semaphore *sem, int subclass)
++	atomic_long_cond_read_acquire(&sem->cnts, !(VAL & RWAQM_W_LOCKED));
++
++	rwmutex_unlock(&sem->wait_lock);
++}
++
++void down_read(struct rw_semaphore *sem)
+ {
++	u64 cnts;
++
+ 	might_sleep();
+-	rwsem_acquire_read(&sem->dep_map, subclass, 0, _RET_IP_);
+ 
+-	LOCK_CONTENDED(sem, __down_read_trylock, __down_read);
+-	rwsem_set_reader_owned(sem);
++	cnts = atomic_long_add_return_acquire(RWAQM_R_BIAS, &sem->cnts);
++	if (likely(!(cnts & RWAQM_W_WMASK)))
++		return;
++
++	aqm_read_lock_slowpath(sem);
+ }
++EXPORT_SYMBOL(down_read);
+ 
+-EXPORT_SYMBOL(down_read_nested);
+ 
+-void _down_write_nest_lock(struct rw_semaphore *sem, struct lockdep_map *nest)
++int __must_check down_read_killable(struct rw_semaphore *sem)
+ {
++	/* XXX: Will handle the EINTR later */
++	down_read(sem);
++	return 0;
++}
++EXPORT_SYMBOL(down_read_killable);
++
++/*
++ * trylock for reading -- returns 1 if successful, 0 if contention
++ */
++int down_read_trylock(struct rw_semaphore *sem)
++{
++	u64 cnts;
++
+ 	might_sleep();
+-	rwsem_acquire_nest(&sem->dep_map, 0, 0, nest, _RET_IP_);
+ 
+-	LOCK_CONTENDED(sem, __down_write_trylock, __down_write);
+-	rwsem_set_owner(sem);
++	cnts = atomic_long_read(&sem->cnts);
++	if (likely(!(cnts & RWAQM_W_WMASK))) {
++		cnts = (u64)atomic_long_add_return_acquire(RWAQM_R_BIAS,
++							   &sem->cnts);
++		if (likely(!(cnts & RWAQM_W_WMASK)))
++			return 1;
++		atomic_long_sub(RWAQM_R_BIAS, &sem->cnts);
++	}
++	return 0;
+ }
++EXPORT_SYMBOL(down_read_trylock);
+ 
+-EXPORT_SYMBOL(_down_write_nest_lock);
+ 
+-void down_read_non_owner(struct rw_semaphore *sem)
++static inline void aqm_write_lock_slowpath(struct rw_semaphore *sem)
+ {
+-	might_sleep();
++	rwmutex_lock(&sem->wait_lock, false);
+ 
+-	__down_read(sem);
+-	rwsem_set_reader_owned(sem);
+-}
++	if (!atomic_long_read(&sem->cnts) &&
++	    (atomic_long_cmpxchg_acquire(&sem->cnts, 0, RWAQM_W_LOCKED) == 0))
++		goto unlock;
+ 
+-EXPORT_SYMBOL(down_read_non_owner);
++	/* atomic_long_add(RWAQM_W_WAITING, &sem->cnts); */
+ 
+-void down_write_nested(struct rw_semaphore *sem, int subclass)
++	do {
++		/* atomic_long_cond_read_acquire(&sem->cnts, VAL == RWAQM_W_WAITING); */
++		atomic_long_cond_read_acquire(&sem->cnts, VAL == 0);
++	} while (atomic_long_cmpxchg_relaxed(&sem->cnts, 0,
++					     RWAQM_W_LOCKED) != 0);
++     unlock:
++	rwmutex_unlock(&sem->wait_lock);
++}
++/*
++ * lock for writing
++ */
++void down_write(struct rw_semaphore *sem)
+ {
+ 	might_sleep();
+-	rwsem_acquire(&sem->dep_map, subclass, 0, _RET_IP_);
+ 
+-	LOCK_CONTENDED(sem, __down_write_trylock, __down_write);
+-	rwsem_set_owner(sem);
++	if (atomic_long_cmpxchg_acquire(&sem->cnts, 0, RWAQM_W_LOCKED) == 0)
++		return;
++
++	aqm_write_lock_slowpath(sem);
+ }
++EXPORT_SYMBOL(down_write);
+ 
+-EXPORT_SYMBOL(down_write_nested);
++int __must_check down_write_killable(struct rw_semaphore *sem)
++{
++	down_write(sem);
++	return 0;
++}
++EXPORT_SYMBOL(down_write_killable);
+ 
+-int __sched down_write_killable_nested(struct rw_semaphore *sem, int subclass)
++/*
++ * trylock for writing -- returns 1 if successful, 0 if contention
++ */
++int down_write_trylock(struct rw_semaphore *sem)
+ {
++	u64 cnts;
++
+ 	might_sleep();
+-	rwsem_acquire(&sem->dep_map, subclass, 0, _RET_IP_);
+ 
+-	if (LOCK_CONTENDED_RETURN(sem, __down_write_trylock, __down_write_killable)) {
+-		rwsem_release(&sem->dep_map, 1, _RET_IP_);
+-		return -EINTR;
+-	}
++	cnts = atomic_long_read(&sem->cnts);
++	if (unlikely(cnts))
++		return 0;
+ 
+-	rwsem_set_owner(sem);
+-	return 0;
++	return likely(atomic_long_cmpxchg_acquire(&sem->cnts,
++					cnts, cnts | RWAQM_W_LOCKED) == cnts);
+ }
++EXPORT_SYMBOL(down_write_trylock);
+ 
+-EXPORT_SYMBOL(down_write_killable_nested);
++/*
++ * release a read lock
++ */
++void up_read(struct rw_semaphore *sem)
++{
++	(void)atomic_long_sub_return_release(RWAQM_R_BIAS, &sem->cnts);
++}
++EXPORT_SYMBOL(up_read);
+ 
+-void up_read_non_owner(struct rw_semaphore *sem)
++/*
++ * release a write lock
++ */
++void up_write(struct rw_semaphore *sem)
+ {
+-	DEBUG_RWSEMS_WARN_ON(sem->owner != RWSEM_READER_OWNED);
+-	__up_read(sem);
++	smp_store_release(&sem->wlocked, 0);
+ }
++EXPORT_SYMBOL(up_write);
++
+ 
+-EXPORT_SYMBOL(up_read_non_owner);
++/*
++ * downgrade write lock to read lock
++ */
++void downgrade_write(struct rw_semaphore *sem)
++{
++	/*
++	 * Two ways to do it:
++	 * 1) lock the cacheline and then do it
++	 * 2) first increment it by the value  then write wlocked to 0
++	 */
++	atomic_long_add(RWAQM_R_BIAS, &sem->cnts);
++	up_write(sem);
++	smp_mb__after_atomic();
++}
++EXPORT_SYMBOL(downgrade_write);
+ 
++void __init_rwsem(struct rw_semaphore *sem, const char *name,
++		  struct lock_class_key *key)
++{
++	atomic_long_set(&sem->cnts, RWAQM_UNLOCKED_VALUE);
++	__rwmutex_init(&sem->wait_lock);
++#ifdef USE_GLOBAL_RDTABLE
++	sem->skt_readers = NULL;
++	sem->cpu_readers = NULL;
+ #endif
++}
++EXPORT_SYMBOL(__init_rwsem);
+diff --git a/kernel/locking/rwsem.h b/kernel/locking/rwsem.h
+index b9d0e72..af235e1 100644
+--- a/kernel/locking/rwsem.h
++++ b/kernel/locking/rwsem.h
+@@ -17,71 +17,37 @@
+  *  4) Other non-zero value
+  *     - a writer owns the lock and other writers can spin on the lock owner.
+  */
+-#define RWSEM_ANONYMOUSLY_OWNED	(1UL << 0)
+-#define RWSEM_READER_OWNED	((struct task_struct *)RWSEM_ANONYMOUSLY_OWNED)
+-
+-#ifdef CONFIG_DEBUG_RWSEMS
+-# define DEBUG_RWSEMS_WARN_ON(c)	DEBUG_LOCKS_WARN_ON(c)
+-#else
+-# define DEBUG_RWSEMS_WARN_ON(c)
+-#endif
+-
+-#ifdef CONFIG_RWSEM_SPIN_ON_OWNER
+-/*
+- * All writes to owner are protected by WRITE_ONCE() to make sure that
+- * store tearing can't happen as optimistic spinners may read and use
+- * the owner value concurrently without lock. Read from owner, however,
+- * may not need READ_ONCE() as long as the pointer value is only used
+- * for comparison and isn't being dereferenced.
+- */
+-static inline void rwsem_set_owner(struct rw_semaphore *sem)
+-{
+-	WRITE_ONCE(sem->owner, current);
+-}
+-
+-static inline void rwsem_clear_owner(struct rw_semaphore *sem)
+-{
+-	WRITE_ONCE(sem->owner, NULL);
+-}
+-
+-static inline void rwsem_set_reader_owned(struct rw_semaphore *sem)
+-{
+-	/*
+-	 * We check the owner value first to make sure that we will only
+-	 * do a write to the rwsem cacheline when it is really necessary
+-	 * to minimize cacheline contention.
+-	 */
+-	if (READ_ONCE(sem->owner) != RWSEM_READER_OWNED)
+-		WRITE_ONCE(sem->owner, RWSEM_READER_OWNED);
+-}
+ 
+ /*
+- * Return true if the a rwsem waiter can spin on the rwsem's owner
+- * and steal the lock, i.e. the lock is not anonymously owned.
+- * N.B. !owner is considered spinnable.
++ * Bit manipulation (not used currently)
++ * Will use just one variable of 4 byts to enclose the following:
++ * 0-7:   locked or unlocked
++ * 8-15:  shuffle leader or not
++ * 16-31: shuffle count
+  */
+-static inline bool is_rwsem_owner_spinnable(struct task_struct *owner)
+-{
+-	return !((unsigned long)owner & RWSEM_ANONYMOUSLY_OWNED);
+-}
+-
+-/*
+- * Return true if rwsem is owned by an anonymous writer or readers.
+- */
+-static inline bool rwsem_has_anonymous_owner(struct task_struct *owner)
+-{
+-	return (unsigned long)owner & RWSEM_ANONYMOUSLY_OWNED;
+-}
+-#else
+-static inline void rwsem_set_owner(struct rw_semaphore *sem)
+-{
+-}
+-
+-static inline void rwsem_clear_owner(struct rw_semaphore *sem)
+-{
+-}
+-
+-static inline void rwsem_set_reader_owned(struct rw_semaphore *sem)
+-{
+-}
+-#endif
++#define _RWAQ_MCS_SET_MASK(type)  (((1U << _RWAQ_MCS_ ## type ## _BITS) -1)\
++                                 << _RWAQ_MCS_ ## type ## _OFFSET)
++#define _RWAQ_MCS_GET_VAL(v, type)   (((v) & (_RWAQ_MCS_ ## type ## _MASK)) >>\
++                                    (_RWAQ_MCS_ ## type ## _OFFSET))
++#define _RWAQ_MCS_LOCKED_OFFSET   0
++#define _RWAQ_MCS_LOCKED_BITS     8
++#define _RWAQ_MCS_LOCKED_MASK     _RWAQ_MCS_SET_MASK(LOCKED)
++#define _RWAQ_MCS_LOCKED_VAL(v)   _RWAQ_MCS_GET_VAL(v, LOCKED)
++
++#define _RWAQ_MCS_SLEADER_OFFSET  (_RWAQ_MCS_LOCKED_OFFSET + _RWAQ_MCS_LOCKED_BITS)
++#define _RWAQ_MCS_SLEADER_BITS    8
++#define _RWAQ_MCS_SLEADER_MASK    _RWAQ_MCS_SET_MASK(SLEADER)
++#define _RWAQ_MCS_SLEADER_VAL(v)  _RWAQ_MCS_GET_VAL(v, SLEADER)
++
++#define _RWAQ_MCS_WCOUNT_OFFSET   (_RWAQ_MCS_SLEADER_OFFSET + _RWAQ_MCS_SLEADER_BITS)
++#define _RWAQ_MCS_WCOUNT_BITS     16
++#define _RWAQ_MCS_WCOUNT_MASK     _RWAQ_MCS_SET_MASK(WCOUNT)
++#define _RWAQ_MCS_WCOUNT_VAL(v)   _RWAQ_MCS_GET_VAL(v, WCOUNT)
++
++#define _RWAQ_MCS_NOSTEAL_VAL     (1U << (_RWAQ_MCS_LOCKED_OFFSET + _RWAQ_MCS_LOCKED_BITS))
++
++#define _RWAQ_MCS_STATUS_PARKED   0 /* node's status is changed to park */
++#define _RWAQ_MCS_STATUS_PWAIT    1 /* starting point for everyone */
++#define _RWAQ_MCS_STATUS_UNPWAIT  2 /* waiter is never scheduled out in this state */
++#define _RWAQ_MCS_STATUS_LOCKED   4 /* node is now going to be the lock holder */
++#define _AQ_MAX_LOCK_COUNT      256u
+-- 
+2.7.4
+

@@ -1,0 +1,5236 @@
+From e3fb6ad9a29afeb0d75bc40f749d5cf38d7db6be Mon Sep 17 00:00:00 2001
+From: Sanidhya Kashyap <sanidhya@gatech.edu>
+Date: Thu, 4 Apr 2019 21:15:29 +0900
+Subject: [PATCH] cst
+
+cst
+---
+ arch/x86/entry/vdso/vma.c        |  10 +-
+ arch/x86/kernel/tboot.c          |   2 +-
+ arch/x86/mm/fault.c              |   8 +-
+ arch/x86/mm/mpx.c                |  12 +-
+ drivers/firmware/efi/efi.c       |   2 +-
+ drivers/gpu/drm/ttm/ttm_bo_vm.c  |   4 +-
+ drivers/iommu/intel-svm.c        |   4 +-
+ fs/aio.c                         |   4 +-
+ fs/coredump.c                    |   4 +-
+ fs/dax.c                         |   4 +-
+ fs/dcache.c                      |  12 +-
+ fs/exec.c                        |  16 +-
+ fs/inode.c                       |   6 +-
+ fs/iomap.c                       |   2 +-
+ fs/namei.c                       |   4 +-
+ fs/proc/base.c                   |  18 +-
+ fs/proc/task_mmu.c               |  26 +-
+ fs/readdir.c                     |   4 +-
+ fs/super.c                       |   4 +-
+ include/linux/cst_common.h       |  23 +
+ include/linux/fs.h               |  43 +-
+ include/linux/huge_mm.h          |   4 +-
+ include/linux/mm_types.h         |   3 +-
+ include/linux/mutex_cstmcsvar.h  |  92 ++++
+ include/linux/rwsem_cst.h        | 195 ++++++++
+ include/linux/sched.h            |   1 +
+ ipc/shm.c                        |   8 +-
+ kernel/acct.c                    |   4 +-
+ kernel/bpf/stackmap.c            |   9 +-
+ kernel/events/core.c             |   4 +-
+ kernel/events/uprobes.c          |  16 +-
+ kernel/exit.c                    |   8 +-
+ kernel/fork.c                    |  13 +-
+ kernel/futex.c                   |   4 +-
+ kernel/locking/Makefile          |   2 +-
+ kernel/locking/mutex_cst.c       | 597 +++++++++++++++++++++++++
+ kernel/locking/mutex_cst.h       |  54 +++
+ kernel/locking/mutex_cstmcsvar.c | 559 +++++++++++++++++++++++
+ kernel/locking/mutex_cstmcsvar.h |  58 +++
+ kernel/locking/qspinlock.c       |   8 +-
+ kernel/locking/rwsem_cst.c       | 932 +++++++++++++++++++++++++++++++++++++++
+ kernel/locking/rwsem_cst.h       |  40 ++
+ kernel/sched/fair.c              |   4 +-
+ kernel/sys.c                     |  18 +-
+ kernel/trace/trace_output.c      |   4 +-
+ mm/filemap.c                     |   4 +-
+ mm/gup.c                         |  28 +-
+ mm/init-mm.c                     |   2 +-
+ mm/khugepaged.c                  |  32 +-
+ mm/ksm.c                         |  36 +-
+ mm/madvise.c                     |  14 +-
+ mm/memcontrol.c                  |   8 +-
+ mm/memory.c                      |  12 +-
+ mm/mempolicy.c                   |  20 +-
+ mm/migrate.c                     |   8 +-
+ mm/mincore.c                     |   4 +-
+ mm/mlock.c                       |  16 +-
+ mm/mmap.c                        |  30 +-
+ mm/mmu_notifier.c                |   6 +-
+ mm/mprotect.c                    |  12 +-
+ mm/mremap.c                      |   4 +-
+ mm/msync.c                       |   8 +-
+ mm/oom_kill.c                    |   4 +-
+ mm/pagewalk.c                    |   4 +-
+ mm/process_vm_access.c           |   4 +-
+ mm/shmem.c                       |   2 +-
+ mm/swapfile.c                    |   6 +-
+ mm/util.c                        |   8 +-
+ net/ipv4/tcp.c                   |   4 +-
+ virt/kvm/async_pf.c              |   4 +-
+ virt/kvm/kvm_main.c              |   8 +-
+ 71 files changed, 2852 insertions(+), 285 deletions(-)
+ create mode 100644 include/linux/cst_common.h
+ create mode 100644 include/linux/mutex_cstmcsvar.h
+ create mode 100644 include/linux/rwsem_cst.h
+ create mode 100644 kernel/locking/mutex_cst.c
+ create mode 100644 kernel/locking/mutex_cst.h
+ create mode 100644 kernel/locking/mutex_cstmcsvar.c
+ create mode 100644 kernel/locking/mutex_cstmcsvar.h
+ create mode 100644 kernel/locking/rwsem_cst.c
+ create mode 100644 kernel/locking/rwsem_cst.h
+
+diff --git a/arch/x86/entry/vdso/vma.c b/arch/x86/entry/vdso/vma.c
+index 5b8b556..70d543d 100644
+--- a/arch/x86/entry/vdso/vma.c
++++ b/arch/x86/entry/vdso/vma.c
+@@ -156,7 +156,7 @@ static int map_vdso(const struct vdso_image *image, unsigned long addr)
+ 	unsigned long text_start;
+ 	int ret = 0;
+ 
+-	if (down_write_killable(&mm->mmap_sem))
++	if (down_write_cst_killable(&mm->mmap_sem))
+ 		return -EINTR;
+ 
+ 	addr = get_unmapped_area(NULL, addr,
+@@ -199,7 +199,7 @@ static int map_vdso(const struct vdso_image *image, unsigned long addr)
+ 	}
+ 
+ up_fail:
+-	up_write(&mm->mmap_sem);
++	up_write_cst(&mm->mmap_sem);
+ 	return ret;
+ }
+ 
+@@ -261,7 +261,7 @@ int map_vdso_once(const struct vdso_image *image, unsigned long addr)
+ 	struct mm_struct *mm = current->mm;
+ 	struct vm_area_struct *vma;
+ 
+-	down_write(&mm->mmap_sem);
++	down_write_cst(&mm->mmap_sem);
+ 	/*
+ 	 * Check if we have already mapped vdso blob - fail to prevent
+ 	 * abusing from userspace install_speciall_mapping, which may
+@@ -272,11 +272,11 @@ int map_vdso_once(const struct vdso_image *image, unsigned long addr)
+ 	for (vma = mm->mmap; vma; vma = vma->vm_next) {
+ 		if (vma_is_special_mapping(vma, &vdso_mapping) ||
+ 				vma_is_special_mapping(vma, &vvar_mapping)) {
+-			up_write(&mm->mmap_sem);
++			up_write_cst(&mm->mmap_sem);
+ 			return -EEXIST;
+ 		}
+ 	}
+-	up_write(&mm->mmap_sem);
++	up_write_cst(&mm->mmap_sem);
+ 
+ 	return map_vdso(image, addr);
+ }
+diff --git a/arch/x86/kernel/tboot.c b/arch/x86/kernel/tboot.c
+index a2486f4..e22232f 100644
+--- a/arch/x86/kernel/tboot.c
++++ b/arch/x86/kernel/tboot.c
+@@ -104,7 +104,7 @@ static struct mm_struct tboot_mm = {
+ 	.pgd            = swapper_pg_dir,
+ 	.mm_users       = ATOMIC_INIT(2),
+ 	.mm_count       = ATOMIC_INIT(1),
+-	.mmap_sem       = __RWSEM_INITIALIZER(init_mm.mmap_sem),
++	.mmap_sem       = __RWSEM_CST_INITIALIZER(init_mm.mmap_sem),
+ 	.page_table_lock =  __SPIN_LOCK_UNLOCKED(init_mm.page_table_lock),
+ 	.mmlist         = LIST_HEAD_INIT(init_mm.mmlist),
+ };
+diff --git a/arch/x86/mm/fault.c b/arch/x86/mm/fault.c
+index 47bebfe..d752d84 100644
+--- a/arch/x86/mm/fault.c
++++ b/arch/x86/mm/fault.c
+@@ -922,7 +922,7 @@ __bad_area(struct pt_regs *regs, unsigned long error_code,
+ 	 * Something tried to access memory that isn't in our memory map..
+ 	 * Fix it, but check if it's kernel or user first..
+ 	 */
+-	up_read(&mm->mmap_sem);
++	up_read_cst(&mm->mmap_sem);
+ 
+ 	__bad_area_nosemaphore(regs, error_code, address,
+ 			       (vma) ? &pkey : NULL, si_code);
+@@ -1321,14 +1321,14 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code,
+ 	 * validate the source. If this is invalid we can skip the address
+ 	 * space check, thus avoiding the deadlock:
+ 	 */
+-	if (unlikely(!down_read_trylock(&mm->mmap_sem))) {
++	if (unlikely(!down_read_cst_trylock(&mm->mmap_sem))) {
+ 		if (!(error_code & X86_PF_USER) &&
+ 		    !search_exception_tables(regs->ip)) {
+ 			bad_area_nosemaphore(regs, error_code, address, NULL);
+ 			return;
+ 		}
+ retry:
+-		down_read(&mm->mmap_sem);
++		down_read_cst(&mm->mmap_sem);
+ 	} else {
+ 		/*
+ 		 * The above down_read_trylock() might have succeeded in
+@@ -1418,7 +1418,7 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code,
+ 		return;
+ 	}
+ 
+-	up_read(&mm->mmap_sem);
++	up_read_cst(&mm->mmap_sem);
+ 	if (unlikely(fault & VM_FAULT_ERROR)) {
+ 		mm_fault_error(regs, error_code, address, &pkey, fault);
+ 		return;
+diff --git a/arch/x86/mm/mpx.c b/arch/x86/mm/mpx.c
+index e500949..02dae80 100644
+--- a/arch/x86/mm/mpx.c
++++ b/arch/x86/mm/mpx.c
+@@ -52,10 +52,10 @@ static unsigned long mpx_mmap(unsigned long len)
+ 	if (len != mpx_bt_size_bytes(mm))
+ 		return -EINVAL;
+ 
+-	down_write(&mm->mmap_sem);
++	down_write_cst(&mm->mmap_sem);
+ 	addr = do_mmap(NULL, 0, len, PROT_READ | PROT_WRITE,
+ 		       MAP_ANONYMOUS | MAP_PRIVATE, VM_MPX, 0, &populate, NULL);
+-	up_write(&mm->mmap_sem);
++	up_write_cst(&mm->mmap_sem);
+ 	if (populate)
+ 		mm_populate(addr, populate);
+ 
+@@ -239,7 +239,7 @@ int mpx_enable_management(void)
+ 	 * unmap path; we can just use mm->context.bd_addr instead.
+ 	 */
+ 	bd_base = mpx_get_bounds_dir();
+-	down_write(&mm->mmap_sem);
++	down_write_cst(&mm->mmap_sem);
+ 
+ 	/* MPX doesn't support addresses above 47 bits yet. */
+ 	if (find_vma(mm, DEFAULT_MAP_WINDOW)) {
+@@ -253,7 +253,7 @@ int mpx_enable_management(void)
+ 	if (mm->context.bd_addr == MPX_INVALID_BOUNDS_DIR)
+ 		ret = -ENXIO;
+ out:
+-	up_write(&mm->mmap_sem);
++	up_write_cst(&mm->mmap_sem);
+ 	return ret;
+ }
+ 
+@@ -264,9 +264,9 @@ int mpx_disable_management(void)
+ 	if (!cpu_feature_enabled(X86_FEATURE_MPX))
+ 		return -ENXIO;
+ 
+-	down_write(&mm->mmap_sem);
++	down_write_cst(&mm->mmap_sem);
+ 	mm->context.bd_addr = MPX_INVALID_BOUNDS_DIR;
+-	up_write(&mm->mmap_sem);
++	up_write_cst(&mm->mmap_sem);
+ 	return 0;
+ }
+ 
+diff --git a/drivers/firmware/efi/efi.c b/drivers/firmware/efi/efi.c
+index 2a29dd9..2489a3f 100644
+--- a/drivers/firmware/efi/efi.c
++++ b/drivers/firmware/efi/efi.c
+@@ -79,7 +79,7 @@ struct mm_struct efi_mm = {
+ 	.mm_rb			= RB_ROOT,
+ 	.mm_users		= ATOMIC_INIT(2),
+ 	.mm_count		= ATOMIC_INIT(1),
+-	.mmap_sem		= __RWSEM_INITIALIZER(efi_mm.mmap_sem),
++	.mmap_sem		= __RWSEM_CST_INITIALIZER(efi_mm.mmap_sem),
+ 	.page_table_lock	= __SPIN_LOCK_UNLOCKED(efi_mm.page_table_lock),
+ 	.mmlist			= LIST_HEAD_INIT(efi_mm.mmlist),
+ 	.cpu_bitmap		= { [BITS_TO_LONGS(NR_CPUS)] = 0},
+diff --git a/drivers/gpu/drm/ttm/ttm_bo_vm.c b/drivers/gpu/drm/ttm/ttm_bo_vm.c
+index 6fe91c1..80614d2 100644
+--- a/drivers/gpu/drm/ttm/ttm_bo_vm.c
++++ b/drivers/gpu/drm/ttm/ttm_bo_vm.c
+@@ -69,7 +69,7 @@ static vm_fault_t ttm_bo_vm_fault_idle(struct ttm_buffer_object *bo,
+ 			goto out_unlock;
+ 
+ 		ttm_bo_get(bo);
+-		up_read(&vmf->vma->vm_mm->mmap_sem);
++		up_read_cst(&vmf->vma->vm_mm->mmap_sem);
+ 		(void) dma_fence_wait(bo->moving, true);
+ 		ttm_bo_unreserve(bo);
+ 		ttm_bo_put(bo);
+@@ -139,7 +139,7 @@ static vm_fault_t ttm_bo_vm_fault(struct vm_fault *vmf)
+ 		if (vmf->flags & FAULT_FLAG_ALLOW_RETRY) {
+ 			if (!(vmf->flags & FAULT_FLAG_RETRY_NOWAIT)) {
+ 				ttm_bo_get(bo);
+-				up_read(&vmf->vma->vm_mm->mmap_sem);
++				up_read_cst(&vmf->vma->vm_mm->mmap_sem);
+ 				(void) ttm_bo_wait_unreserved(bo);
+ 				ttm_bo_put(bo);
+ 			}
+diff --git a/drivers/iommu/intel-svm.c b/drivers/iommu/intel-svm.c
+index 4a03e50..dc0ef95 100644
+--- a/drivers/iommu/intel-svm.c
++++ b/drivers/iommu/intel-svm.c
+@@ -628,7 +628,7 @@ static irqreturn_t prq_event_thread(int irq, void *d)
+ 		if (!is_canonical_address(address))
+ 			goto bad_req;
+ 
+-		down_read(&svm->mm->mmap_sem);
++		down_read_cst(&svm->mm->mmap_sem);
+ 		vma = find_extend_vma(svm->mm, address);
+ 		if (!vma || address < vma->vm_start)
+ 			goto invalid;
+@@ -643,7 +643,7 @@ static irqreturn_t prq_event_thread(int irq, void *d)
+ 
+ 		result = QI_RESP_SUCCESS;
+ 	invalid:
+-		up_read(&svm->mm->mmap_sem);
++		up_read_cst(&svm->mm->mmap_sem);
+ 		mmput(svm->mm);
+ 	bad_req:
+ 		/* Accounting for major/minor faults? */
+diff --git a/fs/aio.c b/fs/aio.c
+index b9350f3..c2e0b04 100644
+--- a/fs/aio.c
++++ b/fs/aio.c
+@@ -504,7 +504,7 @@ static int aio_setup_ring(struct kioctx *ctx, unsigned int nr_events)
+ 	ctx->mmap_size = nr_pages * PAGE_SIZE;
+ 	pr_debug("attempting mmap of %lu bytes\n", ctx->mmap_size);
+ 
+-	if (down_write_killable(&mm->mmap_sem)) {
++	if (down_write_cst_killable(&mm->mmap_sem)) {
+ 		ctx->mmap_size = 0;
+ 		aio_free_ring(ctx);
+ 		return -EINTR;
+@@ -513,7 +513,7 @@ static int aio_setup_ring(struct kioctx *ctx, unsigned int nr_events)
+ 	ctx->mmap_base = do_mmap_pgoff(ctx->aio_ring_file, 0, ctx->mmap_size,
+ 				       PROT_READ | PROT_WRITE,
+ 				       MAP_SHARED, 0, &unused, NULL);
+-	up_write(&mm->mmap_sem);
++	up_write_cst(&mm->mmap_sem);
+ 	if (IS_ERR((void *)ctx->mmap_base)) {
+ 		ctx->mmap_size = 0;
+ 		aio_free_ring(ctx);
+diff --git a/fs/coredump.c b/fs/coredump.c
+index 1e2c87a..e67db1e 100644
+--- a/fs/coredump.c
++++ b/fs/coredump.c
+@@ -417,12 +417,12 @@ static int coredump_wait(int exit_code, struct core_state *core_state)
+ 	core_state->dumper.task = tsk;
+ 	core_state->dumper.next = NULL;
+ 
+-	if (down_write_killable(&mm->mmap_sem))
++	if (down_write_cst_killable(&mm->mmap_sem))
+ 		return -EINTR;
+ 
+ 	if (!mm->core_state)
+ 		core_waiters = zap_threads(tsk, mm, core_state, exit_code);
+-	up_write(&mm->mmap_sem);
++	up_write_cst(&mm->mmap_sem);
+ 
+ 	if (core_waiters > 0) {
+ 		struct core_thread *ptr;
+diff --git a/fs/dax.c b/fs/dax.c
+index f32d712..3406610 100644
+--- a/fs/dax.c
++++ b/fs/dax.c
+@@ -1296,10 +1296,10 @@ dax_iomap_rw(struct kiocb *iocb, struct iov_iter *iter,
+ 	unsigned flags = 0;
+ 
+ 	if (iov_iter_rw(iter) == WRITE) {
+-		lockdep_assert_held_exclusive(&inode->i_rwsem);
++		/* lockdep_assert_held_exclusive(&inode->i_rwsem); */
+ 		flags |= IOMAP_WRITE;
+ 	} else {
+-		lockdep_assert_held(&inode->i_rwsem);
++		/* lockdep_assert_held(&inode->i_rwsem); */
+ 	}
+ 
+ 	while (iov_iter_count(iter)) {
+diff --git a/fs/dcache.c b/fs/dcache.c
+index 2e7e8d8..7cbbb54 100644
+--- a/fs/dcache.c
++++ b/fs/dcache.c
+@@ -2869,8 +2869,8 @@ struct dentry *d_ancestor(struct dentry *p1, struct dentry *p2)
+ static int __d_unalias(struct inode *inode,
+ 		struct dentry *dentry, struct dentry *alias)
+ {
+-	struct mutex *m1 = NULL;
+-	struct rw_semaphore *m2 = NULL;
++	struct cst_mutex *m1 = NULL;
++	struct rwcst_semaphore *m2 = NULL;
+ 	int ret = -ESTALE;
+ 
+ 	/* If alias and dentry share a parent, then no extra locks required */
+@@ -2878,20 +2878,20 @@ static int __d_unalias(struct inode *inode,
+ 		goto out_unalias;
+ 
+ 	/* See lock_rename() */
+-	if (!mutex_trylock(&dentry->d_sb->s_vfs_rename_mutex))
++	if (!cst_mutex_trylock(&dentry->d_sb->s_vfs_rename_mutex))
+ 		goto out_err;
+ 	m1 = &dentry->d_sb->s_vfs_rename_mutex;
+ 	if (!inode_trylock_shared(alias->d_parent->d_inode))
+ 		goto out_err;
+-	m2 = &alias->d_parent->d_inode->i_rwsem;
++	m2 = &alias->d_parent->d_inode->i_cstrwsem;
+ out_unalias:
+ 	__d_move(alias, dentry, false);
+ 	ret = 0;
+ out_err:
+ 	if (m2)
+-		up_read(m2);
++		up_read_cst(m2);
+ 	if (m1)
+-		mutex_unlock(m1);
++		cst_mutex_unlock(m1);
+ 	return ret;
+ }
+ 
+diff --git a/fs/exec.c b/fs/exec.c
+index 1ebf6e5..5f9a4e8 100644
+--- a/fs/exec.c
++++ b/fs/exec.c
+@@ -295,7 +295,7 @@ static int __bprm_mm_init(struct linux_binprm *bprm)
+ 		return -ENOMEM;
+ 	vma_set_anonymous(vma);
+ 
+-	if (down_write_killable(&mm->mmap_sem)) {
++	if (down_write_cst_killable(&mm->mmap_sem)) {
+ 		err = -EINTR;
+ 		goto err_free;
+ 	}
+@@ -318,11 +318,11 @@ static int __bprm_mm_init(struct linux_binprm *bprm)
+ 
+ 	mm->stack_vm = mm->total_vm = 1;
+ 	arch_bprm_mm_init(mm, vma);
+-	up_write(&mm->mmap_sem);
++	up_write_cst(&mm->mmap_sem);
+ 	bprm->p = vma->vm_end - sizeof(void *);
+ 	return 0;
+ err:
+-	up_write(&mm->mmap_sem);
++	up_write_cst(&mm->mmap_sem);
+ err_free:
+ 	bprm->vma = NULL;
+ 	vm_area_free(vma);
+@@ -735,7 +735,7 @@ int setup_arg_pages(struct linux_binprm *bprm,
+ 		bprm->loader -= stack_shift;
+ 	bprm->exec -= stack_shift;
+ 
+-	if (down_write_killable(&mm->mmap_sem))
++	if (down_write_cst_killable(&mm->mmap_sem))
+ 		return -EINTR;
+ 
+ 	vm_flags = VM_STACK_FLAGS;
+@@ -792,7 +792,7 @@ int setup_arg_pages(struct linux_binprm *bprm,
+ 		ret = -EFAULT;
+ 
+ out_unlock:
+-	up_write(&mm->mmap_sem);
++	up_write_cst(&mm->mmap_sem);
+ 	return ret;
+ }
+ EXPORT_SYMBOL(setup_arg_pages);
+@@ -1021,9 +1021,9 @@ static int exec_mmap(struct mm_struct *mm)
+ 		 * through with the exec.  We must hold mmap_sem around
+ 		 * checking core_state and changing tsk->mm.
+ 		 */
+-		down_read(&old_mm->mmap_sem);
++		down_read_cst(&old_mm->mmap_sem);
+ 		if (unlikely(old_mm->core_state)) {
+-			up_read(&old_mm->mmap_sem);
++			up_read_cst(&old_mm->mmap_sem);
+ 			return -EINTR;
+ 		}
+ 	}
+@@ -1036,7 +1036,7 @@ static int exec_mmap(struct mm_struct *mm)
+ 	vmacache_flush(tsk);
+ 	task_unlock(tsk);
+ 	if (old_mm) {
+-		up_read(&old_mm->mmap_sem);
++		up_read_cst(&old_mm->mmap_sem);
+ 		BUG_ON(active_mm != old_mm);
+ 		setmax_mm_hiwater_rss(&tsk->signal->maxrss, old_mm);
+ 		mm_update_next_owner(old_mm);
+diff --git a/fs/inode.c b/fs/inode.c
+index 42f6d25..564e8b7 100644
+--- a/fs/inode.c
++++ b/fs/inode.c
+@@ -170,8 +170,8 @@ int inode_init_always(struct super_block *sb, struct inode *inode)
+ 	spin_lock_init(&inode->i_lock);
+ 	lockdep_set_class(&inode->i_lock, &sb->s_type->i_lock_key);
+ 
+-	init_rwsem(&inode->i_rwsem);
+-	lockdep_set_class(&inode->i_rwsem, &sb->s_type->i_mutex_key);
++	init_rwsem_cst(&inode->i_cstrwsem);
++	/* lockdep_set_class(&inode->i_rwsem, &sb->s_type->i_mutex_key); */
+ 
+ 	atomic_set(&inode->i_dio_count, 0);
+ 
+@@ -350,7 +350,7 @@ EXPORT_SYMBOL(inc_nlink);
+ static void __address_space_init_once(struct address_space *mapping)
+ {
+ 	INIT_RADIX_TREE(&mapping->i_pages, GFP_ATOMIC | __GFP_ACCOUNT);
+-	init_rwsem(&mapping->i_mmap_rwsem);
++	init_rwsem_cst(&mapping->i_mmap_rwsem);
+ 	INIT_LIST_HEAD(&mapping->private_list);
+ 	spin_lock_init(&mapping->private_lock);
+ 	mapping->i_mmap = RB_ROOT_CACHED;
+diff --git a/fs/iomap.c b/fs/iomap.c
+index 74762b1..0e50c29 100644
+--- a/fs/iomap.c
++++ b/fs/iomap.c
+@@ -1768,7 +1768,7 @@ iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
+ 	struct blk_plug plug;
+ 	struct iomap_dio *dio;
+ 
+-	lockdep_assert_held(&inode->i_rwsem);
++	/* lockdep_assert_held(&inode->i_rwsem); */
+ 
+ 	if (!count)
+ 		return 0;
+diff --git a/fs/namei.c b/fs/namei.c
+index 0cab649..7882372 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -2863,7 +2863,7 @@ struct dentry *lock_rename(struct dentry *p1, struct dentry *p2)
+ 		return NULL;
+ 	}
+ 
+-	mutex_lock(&p1->d_sb->s_vfs_rename_mutex);
++	cst_mutex_lock(&p1->d_sb->s_vfs_rename_mutex);
+ 
+ 	p = d_ancestor(p2, p1);
+ 	if (p) {
+@@ -2890,7 +2890,7 @@ void unlock_rename(struct dentry *p1, struct dentry *p2)
+ 	inode_unlock(p1->d_inode);
+ 	if (p1 != p2) {
+ 		inode_unlock(p2->d_inode);
+-		mutex_unlock(&p1->d_sb->s_vfs_rename_mutex);
++		cst_mutex_unlock(&p1->d_sb->s_vfs_rename_mutex);
+ 	}
+ }
+ EXPORT_SYMBOL(unlock_rename);
+diff --git a/fs/proc/base.c b/fs/proc/base.c
+index ccf86f1..7e585c1 100644
+--- a/fs/proc/base.c
++++ b/fs/proc/base.c
+@@ -1950,9 +1950,9 @@ static int map_files_d_revalidate(struct dentry *dentry, unsigned int flags)
+ 		goto out;
+ 
+ 	if (!dname_to_vma_addr(dentry, &vm_start, &vm_end)) {
+-		down_read(&mm->mmap_sem);
++		down_read_cst(&mm->mmap_sem);
+ 		exact_vma_exists = !!find_exact_vma(mm, vm_start, vm_end);
+-		up_read(&mm->mmap_sem);
++		up_read_cst(&mm->mmap_sem);
+ 	}
+ 
+ 	mmput(mm);
+@@ -1999,14 +1999,14 @@ static int map_files_get_link(struct dentry *dentry, struct path *path)
+ 		goto out_mmput;
+ 
+ 	rc = -ENOENT;
+-	down_read(&mm->mmap_sem);
++	down_read_cst(&mm->mmap_sem);
+ 	vma = find_exact_vma(mm, vm_start, vm_end);
+ 	if (vma && vma->vm_file) {
+ 		*path = vma->vm_file->f_path;
+ 		path_get(path);
+ 		rc = 0;
+ 	}
+-	up_read(&mm->mmap_sem);
++	up_read_cst(&mm->mmap_sem);
+ 
+ out_mmput:
+ 	mmput(mm);
+@@ -2095,7 +2095,7 @@ static struct dentry *proc_map_files_lookup(struct inode *dir,
+ 	if (!mm)
+ 		goto out_put_task;
+ 
+-	down_read(&mm->mmap_sem);
++	down_read_cst(&mm->mmap_sem);
+ 	vma = find_exact_vma(mm, vm_start, vm_end);
+ 	if (!vma)
+ 		goto out_no_vma;
+@@ -2105,7 +2105,7 @@ static struct dentry *proc_map_files_lookup(struct inode *dir,
+ 				(void *)(unsigned long)vma->vm_file->f_mode);
+ 
+ out_no_vma:
+-	up_read(&mm->mmap_sem);
++	up_read_cst(&mm->mmap_sem);
+ 	mmput(mm);
+ out_put_task:
+ 	put_task_struct(task);
+@@ -2147,7 +2147,7 @@ proc_map_files_readdir(struct file *file, struct dir_context *ctx)
+ 	mm = get_task_mm(task);
+ 	if (!mm)
+ 		goto out_put_task;
+-	down_read(&mm->mmap_sem);
++	down_read_cst(&mm->mmap_sem);
+ 
+ 	nr_files = 0;
+ 
+@@ -2174,7 +2174,7 @@ proc_map_files_readdir(struct file *file, struct dir_context *ctx)
+ 			ret = -ENOMEM;
+ 			if (fa)
+ 				flex_array_free(fa);
+-			up_read(&mm->mmap_sem);
++			up_read_cst(&mm->mmap_sem);
+ 			mmput(mm);
+ 			goto out_put_task;
+ 		}
+@@ -2192,7 +2192,7 @@ proc_map_files_readdir(struct file *file, struct dir_context *ctx)
+ 				BUG();
+ 		}
+ 	}
+-	up_read(&mm->mmap_sem);
++	up_read_cst(&mm->mmap_sem);
+ 	mmput(mm);
+ 
+ 	for (i = 0; i < nr_files; i++) {
+diff --git a/fs/proc/task_mmu.c b/fs/proc/task_mmu.c
+index 5ea1d64..628eebd 100644
+--- a/fs/proc/task_mmu.c
++++ b/fs/proc/task_mmu.c
+@@ -128,7 +128,7 @@ static void vma_stop(struct proc_maps_private *priv)
+ 	struct mm_struct *mm = priv->mm;
+ 
+ 	release_task_mempolicy(priv);
+-	up_read(&mm->mmap_sem);
++	up_read_cst(&mm->mmap_sem);
+ 	mmput(mm);
+ }
+ 
+@@ -166,7 +166,7 @@ static void *m_start(struct seq_file *m, loff_t *ppos)
+ 	if (!mm || !mmget_not_zero(mm))
+ 		return NULL;
+ 
+-	down_read(&mm->mmap_sem);
++	down_read_cst(&mm->mmap_sem);
+ 	hold_task_mempolicy(priv);
+ 	priv->tail_vma = get_gate_vma(mm);
+ 
+@@ -818,7 +818,7 @@ static int show_smaps_rollup(struct seq_file *m, void *v)
+ 
+ 	memset(&mss, 0, sizeof(mss));
+ 
+-	down_read(&mm->mmap_sem);
++	down_read_cst(&mm->mmap_sem);
+ 	hold_task_mempolicy(priv);
+ 
+ 	for (vma = priv->mm->mmap; vma; vma = vma->vm_next) {
+@@ -834,7 +834,7 @@ static int show_smaps_rollup(struct seq_file *m, void *v)
+ 	__show_smap(m, &mss);
+ 
+ 	release_task_mempolicy(priv);
+-	up_read(&mm->mmap_sem);
++	up_read_cst(&mm->mmap_sem);
+ 	mmput(mm);
+ 
+ out_put_task:
+@@ -1105,7 +1105,7 @@ static ssize_t clear_refs_write(struct file *file, const char __user *buf,
+ 		};
+ 
+ 		if (type == CLEAR_REFS_MM_HIWATER_RSS) {
+-			if (down_write_killable(&mm->mmap_sem)) {
++			if (down_write_cst_killable(&mm->mmap_sem)) {
+ 				count = -EINTR;
+ 				goto out_mm;
+ 			}
+@@ -1115,18 +1115,18 @@ static ssize_t clear_refs_write(struct file *file, const char __user *buf,
+ 			 * resident set size to this mm's current rss value.
+ 			 */
+ 			reset_mm_hiwater_rss(mm);
+-			up_write(&mm->mmap_sem);
++			up_write_cst(&mm->mmap_sem);
+ 			goto out_mm;
+ 		}
+ 
+-		down_read(&mm->mmap_sem);
++		down_read_cst(&mm->mmap_sem);
+ 		tlb_gather_mmu(&tlb, mm, 0, -1);
+ 		if (type == CLEAR_REFS_SOFT_DIRTY) {
+ 			for (vma = mm->mmap; vma; vma = vma->vm_next) {
+ 				if (!(vma->vm_flags & VM_SOFTDIRTY))
+ 					continue;
+-				up_read(&mm->mmap_sem);
+-				if (down_write_killable(&mm->mmap_sem)) {
++				up_read_cst(&mm->mmap_sem);
++				if (down_write_cst_killable(&mm->mmap_sem)) {
+ 					count = -EINTR;
+ 					goto out_mm;
+ 				}
+@@ -1134,7 +1134,7 @@ static ssize_t clear_refs_write(struct file *file, const char __user *buf,
+ 					vma->vm_flags &= ~VM_SOFTDIRTY;
+ 					vma_set_page_prot(vma);
+ 				}
+-				downgrade_write(&mm->mmap_sem);
++				downgrade_write_cst(&mm->mmap_sem);
+ 				break;
+ 			}
+ 			mmu_notifier_invalidate_range_start(mm, 0, -1);
+@@ -1143,7 +1143,7 @@ static ssize_t clear_refs_write(struct file *file, const char __user *buf,
+ 		if (type == CLEAR_REFS_SOFT_DIRTY)
+ 			mmu_notifier_invalidate_range_end(mm, 0, -1);
+ 		tlb_finish_mmu(&tlb, 0, -1);
+-		up_read(&mm->mmap_sem);
++		up_read_cst(&mm->mmap_sem);
+ out_mm:
+ 		mmput(mm);
+ 	}
+@@ -1505,9 +1505,9 @@ static ssize_t pagemap_read(struct file *file, char __user *buf,
+ 		/* overflow ? */
+ 		if (end < start_vaddr || end > end_vaddr)
+ 			end = end_vaddr;
+-		down_read(&mm->mmap_sem);
++		down_read_cst(&mm->mmap_sem);
+ 		ret = walk_page_range(start_vaddr, end, &pagemap_walk);
+-		up_read(&mm->mmap_sem);
++		up_read_cst(&mm->mmap_sem);
+ 		start_vaddr = end;
+ 
+ 		len = min(count, PM_ENTRY_BYTES * pm.pos);
+diff --git a/fs/readdir.c b/fs/readdir.c
+index d97f548..4410ac5 100644
+--- a/fs/readdir.c
++++ b/fs/readdir.c
+@@ -38,9 +38,9 @@ int iterate_dir(struct file *file, struct dir_context *ctx)
+ 		goto out;
+ 
+ 	if (shared)
+-		res = down_read_killable(&inode->i_rwsem);
++		res = down_read_cst_killable(&inode->i_cstrwsem);
+ 	else
+-		res = down_write_killable(&inode->i_rwsem);
++		res = down_write_cst_killable(&inode->i_cstrwsem);
+ 	if (res)
+ 		goto out;
+ 
+diff --git a/fs/super.c b/fs/super.c
+index f3a8c00..d054a6e 100644
+--- a/fs/super.c
++++ b/fs/super.c
+@@ -249,8 +249,8 @@ static struct super_block *alloc_super(struct file_system_type *type, int flags,
+ 
+ 	s->s_count = 1;
+ 	atomic_set(&s->s_active, 1);
+-	mutex_init(&s->s_vfs_rename_mutex);
+-	lockdep_set_class(&s->s_vfs_rename_mutex, &type->s_vfs_rename_key);
++	cst_mutex_init(&s->s_vfs_rename_mutex);
++	/* lockdep_set_class(&s->s_vfs_rename_mutex, &type->s_vfs_rename_key); */
+ 	init_rwsem(&s->s_dquot.dqio_sem);
+ 	s->s_maxbytes = MAX_NON_LFS;
+ 	s->s_op = &default_op;
+diff --git a/include/linux/cst_common.h b/include/linux/cst_common.h
+new file mode 100644
+index 0000000..a971ea9
+--- /dev/null
++++ b/include/linux/cst_common.h
+@@ -0,0 +1,23 @@
++#ifndef __LINUX_CST_COMMON_H
++#define __LINUX_CST_COMMON_H
++
++struct atomic_list_head {
++        struct atomic_list_head *next;
++};
++
++/**
++ * linux-like circular list manipulation
++ */
++struct qnode {
++	struct qnode *next;
++	struct task_struct *task;
++	uint32_t status;
++
++	uint32_t parked ____cacheline_aligned;
++} ____cacheline_aligned;
++
++struct numa_head {
++	struct atomic_list_head head;
++};
++
++#endif /* __LINUX_CST_COMMON_H */
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 6c0b4a1..aa3bafc 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -37,6 +37,8 @@
+ #include <linux/uuid.h>
+ #include <linux/errseq.h>
+ #include <linux/ioprio.h>
++#include <linux/rwsem_cst.h>
++#include <linux/mutex_cstmcsvar.h>
+ 
+ #include <asm/byteorder.h>
+ #include <uapi/linux/fs.h>
+@@ -408,7 +410,8 @@ struct address_space {
+ 	struct radix_tree_root	i_pages;	/* cached pages */
+ 	atomic_t		i_mmap_writable;/* count VM_SHARED mappings */
+ 	struct rb_root_cached	i_mmap;		/* tree of private and shared mappings */
+-	struct rw_semaphore	i_mmap_rwsem;	/* protect tree, count, list */
++	/* struct rw_semaphore	i_mmap_rwsem;	/1* protect tree, count, list *1/ */
++	struct rwcst_semaphore	i_mmap_rwsem;	/* protect tree, count, list */
+ 	/* Protected by the i_pages lock */
+ 	unsigned long		nrpages;	/* number of total pages */
+ 	/* number of shadow or DAX exceptional entries */
+@@ -479,22 +482,22 @@ int mapping_tagged(struct address_space *mapping, int tag);
+ 
+ static inline void i_mmap_lock_write(struct address_space *mapping)
+ {
+-	down_write(&mapping->i_mmap_rwsem);
++	down_write_cst(&mapping->i_mmap_rwsem);
+ }
+ 
+ static inline void i_mmap_unlock_write(struct address_space *mapping)
+ {
+-	up_write(&mapping->i_mmap_rwsem);
++	up_write_cst(&mapping->i_mmap_rwsem);
+ }
+ 
+ static inline void i_mmap_lock_read(struct address_space *mapping)
+ {
+-	down_read(&mapping->i_mmap_rwsem);
++	down_read_cst(&mapping->i_mmap_rwsem);
+ }
+ 
+ static inline void i_mmap_unlock_read(struct address_space *mapping)
+ {
+-	up_read(&mapping->i_mmap_rwsem);
++	up_read_cst(&mapping->i_mmap_rwsem);
+ }
+ 
+ /*
+@@ -631,7 +634,8 @@ struct inode {
+ 
+ 	/* Misc */
+ 	unsigned long		i_state;
+-	struct rw_semaphore	i_rwsem;
++	/* struct rw_semaphore	i_rwsem; */
++	struct rwcst_semaphore 	i_cstrwsem;
+ 
+ 	unsigned long		dirtied_when;	/* jiffies of first dirtying */
+ 	unsigned long		dirtied_time_when;
+@@ -735,47 +739,54 @@ enum inode_i_mutex_lock_class
+ 
+ static inline void inode_lock(struct inode *inode)
+ {
+-	down_write(&inode->i_rwsem);
++	/* down_write(&inode->i_rwsem); */
++	down_write_cst(&inode->i_cstrwsem);
+ }
+ 
+ static inline void inode_unlock(struct inode *inode)
+ {
+-	up_write(&inode->i_rwsem);
++	/* up_write(&inode->i_rwsem); */
++	up_write_cst(&inode->i_cstrwsem);
+ }
+ 
+ static inline void inode_lock_shared(struct inode *inode)
+ {
+-	down_read(&inode->i_rwsem);
++	/* down_read(&inode->i_rwsem); */
++	down_read_cst(&inode->i_cstrwsem);
+ }
+ 
+ static inline void inode_unlock_shared(struct inode *inode)
+ {
+-	up_read(&inode->i_rwsem);
++	/* up_read(&inode->i_rwsem); */
++	up_read_cst(&inode->i_cstrwsem);
+ }
+ 
+ static inline int inode_trylock(struct inode *inode)
+ {
+-	return down_write_trylock(&inode->i_rwsem);
++	/* return down_write_trylock(&inode->i_rwsem); */
++	return down_write_cst_trylock(&inode->i_cstrwsem);
+ }
+ 
+ static inline int inode_trylock_shared(struct inode *inode)
+ {
+-	return down_read_trylock(&inode->i_rwsem);
++	/* return down_read_trylock(&inode->i_rwsem); */
++	return down_read_cst_trylock(&inode->i_cstrwsem);
+ }
+ 
+ static inline int inode_is_locked(struct inode *inode)
+ {
+-	return rwsem_is_locked(&inode->i_rwsem);
++	return rwsem_cst_is_locked(&inode->i_cstrwsem);
+ }
+ 
+ static inline void inode_lock_nested(struct inode *inode, unsigned subclass)
+ {
+-	down_write_nested(&inode->i_rwsem, subclass);
++	/* down_write_nested(&inode->i_rwsem, subclass); */
++	down_write_cst_nested(&inode->i_cstrwsem, subclass);
+ }
+ 
+ static inline void inode_lock_shared_nested(struct inode *inode, unsigned subclass)
+ {
+-	down_read_nested(&inode->i_rwsem, subclass);
++	down_read_cst_nested(&inode->i_cstrwsem, subclass);
+ }
+ 
+ void lock_two_nondirectories(struct inode *, struct inode*);
+@@ -1408,7 +1419,7 @@ struct super_block {
+ 	 * The next field is for VFS *only*. No filesystems have any business
+ 	 * even looking at it. You had been warned.
+ 	 */
+-	struct mutex s_vfs_rename_mutex;	/* Kludge */
++	struct cst_mutex s_vfs_rename_mutex;	/* Kludge */
+ 
+ 	/*
+ 	 * Filesystem subtype.  If non-empty the filesystem type field
+diff --git a/include/linux/huge_mm.h b/include/linux/huge_mm.h
+index 99c19b0..e31fbd2 100644
+--- a/include/linux/huge_mm.h
++++ b/include/linux/huge_mm.h
+@@ -190,7 +190,7 @@ static inline int is_swap_pmd(pmd_t pmd)
+ static inline spinlock_t *pmd_trans_huge_lock(pmd_t *pmd,
+ 		struct vm_area_struct *vma)
+ {
+-	VM_BUG_ON_VMA(!rwsem_is_locked(&vma->vm_mm->mmap_sem), vma);
++	/* VM_BUG_ON_VMA(!rwsem_is_locked(&vma->vm_mm->mmap_sem), vma); */
+ 	if (is_swap_pmd(*pmd) || pmd_trans_huge(*pmd) || pmd_devmap(*pmd))
+ 		return __pmd_trans_huge_lock(pmd, vma);
+ 	else
+@@ -199,7 +199,7 @@ static inline spinlock_t *pmd_trans_huge_lock(pmd_t *pmd,
+ static inline spinlock_t *pud_trans_huge_lock(pud_t *pud,
+ 		struct vm_area_struct *vma)
+ {
+-	VM_BUG_ON_VMA(!rwsem_is_locked(&vma->vm_mm->mmap_sem), vma);
++	/* VM_BUG_ON_VMA(!rwsem_is_locked(&vma->vm_mm->mmap_sem), vma); */
+ 	if (pud_trans_huge(*pud) || pud_devmap(*pud))
+ 		return __pud_trans_huge_lock(pud, vma);
+ 	else
+diff --git a/include/linux/mm_types.h b/include/linux/mm_types.h
+index 5ed8f62..1a425ff 100644
+--- a/include/linux/mm_types.h
++++ b/include/linux/mm_types.h
+@@ -14,6 +14,7 @@
+ #include <linux/uprobes.h>
+ #include <linux/page-flags-layout.h>
+ #include <linux/workqueue.h>
++#include <linux/rwsem_cst.h>
+ 
+ #include <asm/mmu.h>
+ 
+@@ -386,7 +387,7 @@ struct mm_struct {
+ 		spinlock_t page_table_lock; /* Protects page tables and some
+ 					     * counters
+ 					     */
+-		struct rw_semaphore mmap_sem;
++		struct rwcst_semaphore mmap_sem;
+ 
+ 		struct list_head mmlist; /* List of maybe swapped mm's.	These
+ 					  * are globally strung together off
+diff --git a/include/linux/mutex_cstmcsvar.h b/include/linux/mutex_cstmcsvar.h
+new file mode 100644
+index 0000000..ff53447
+--- /dev/null
++++ b/include/linux/mutex_cstmcsvar.h
+@@ -0,0 +1,92 @@
++#ifndef __LINUX_CST_H_
++#define __LINUX_CST_H_
++
++#include <linux/slab.h>
++#include <linux/linkage.h>
++#include <linux/spinlock_types.h>
++#include <asm/processor.h>
++#include <asm/current.h>
++
++#include <linux/cst_common.h>
++
++struct mutex_snode {
++	/*
++	 * ONE CACHELINE
++	 */
++	struct qnode *qnext;
++	struct qnode *qtail;
++	/* batch count */
++	int32_t num_proc; /* #batched processes */
++	/* current lock holder task */
++	struct task_struct *holder;
++
++	/*
++	 * ANOTHER CACHELINE
++	 * tail management
++	 */
++	/* MCS tail to know who is the next waiter */
++	struct mutex_snode *gnext ____cacheline_aligned;
++
++	/*
++	 * ANOTHER CACHELINE
++	 * snode bookeeping for various uses
++	 */
++
++	/* list node like Linux list */
++	struct atomic_list_head numa_node ____cacheline_aligned;
++	/* spinlock for the wq */
++	spinlock_t wait_lock;
++	/* list for the waiters */
++	struct list_head wait_list;
++	/* status update of the waiter */
++	volatile int32_t status;
++	/* node id */
++	int32_t nid; /* alive: > 0 | zombie: < 0 */
++	/* other bookeeping stuff */
++	uint32_t task_priority;
++
++} ____cacheline_aligned;
++
++/*
++ * TODO: Remove volatile code, follow the kernel style, requires lot of testing
++ */
++struct cst_mutex {
++	/* nice value */
++	int nice;
++
++	/* snode which holds the holder */
++	struct mutex_snode *serving_socket;
++	/* tail for the MCS style */
++	struct mutex_snode *gtail;
++	/* Fancy way to allocate the snode */
++	volatile uint64_t ngid_vec;
++
++	/* Maintain the snode list that tells how many sockets are active */
++	struct numa_head numa_list;
++};
++
++#define __CST_MUTEX_INITIALIZER(lockname) \
++	{ .nice = 0 \
++	, .serving_socket = NULL \
++	, .gtail = NULL \
++	, .ngid_vec = 0 \
++	, .numa_list.head.next = &(lockname).numa_list.head \
++	}
++
++#define DEFINE_CST_MUTEX(mutexname) \
++	struct cst_mutex mutexname = __CST_MUTEX_INITIALIZER(mutexname)
++
++extern void cst_mutex_init(struct cst_mutex *lock);
++extern int cst_mutex_is_locked(struct cst_mutex *lock);
++extern void cst_mutex_lock(struct cst_mutex *lock);
++extern int __must_check cst_mutex_lock_interruptible(struct cst_mutex *lock);
++extern int __must_check cst_mutex_lock_killable(struct cst_mutex *lock);
++
++extern int cst_mutex_trylock(struct cst_mutex *lock);
++extern void cst_mutex_unlock(struct cst_mutex *lock);
++
++extern int cst_atomic_dec_and_mutex_lock(atomic_t *cnt, struct cst_mutex *lock);
++
++extern void cst_mutex_destroy(struct cst_mutex *lock);
++
++#endif
+diff --git a/include/linux/rwsem_cst.h b/include/linux/rwsem_cst.h
+new file mode 100644
+index 0000000..b64fb68
+--- /dev/null
++++ b/include/linux/rwsem_cst.h
+@@ -0,0 +1,195 @@
++/*
++ * rwsem_cst.h: R/W semaphores, public interface
++ */
++
++#ifndef _LINUX_RWSEM_CST_H
++#define _LINUX_RWSEM_CST_H
++
++#include <linux/types.h>
++#include <linux/kernel.h>
++#include <linux/list.h>
++#include <linux/spinlock.h>
++#include <linux/atomic.h>
++#include <linux/err.h>
++#include <linux/wait.h>
++
++#include <linux/cst_common.h>
++
++struct rw_snode {
++	/*
++	 * ONE CACHELINE
++	 */
++	struct qnode *qnext;
++	struct qnode *qtail;
++	/* batch count */
++	int32_t num_proc; /* #batched processes */
++	/* current lock holder task */
++	struct task_struct *holder;
++	/* flag for notifying whether to kick or not */
++	int32_t kick_qnode;
++
++	/*
++	 * ANOTHER CACHELINE
++	 * Maintain the readers info
++	 */
++	int32_t active_readers ____cacheline_aligned;
++
++	/*
++	 * ANOTHER CACHELINE
++	 * tail management
++	 */
++	/* MCS tail to know who is the next waiter */
++	struct rw_snode *gnext ____cacheline_aligned;
++	/* status update of the waiter */
++	int32_t status;
++	/* wait queue */
++	wait_queue_head_t queue;
++
++	/*
++	 * ANOTHER CACHELINE
++	 * snode bookeeping for various uses
++	 */
++	/* list node like Linux list */
++	struct atomic_list_head numa_node ____cacheline_aligned;
++	/* node id */
++	int32_t nid; /* alive: > 0 | zombie: < 0 */
++	/* other bookeeping stuff */
++	uint32_t task_priority;
++
++} ____cacheline_aligned;
++
++struct rwcst_semaphore {
++	/* snode which holds the hold */
++	struct rw_snode *serving_socket;
++	/* tail for the MCS style */
++	/*
++	 * IMO: there is no way to remove the READ_ONCE
++	 * from any call for gtail. The reason is that this one
++	 * introduces a window of vulnerability in almost
++	 * every case (I can come up with almost every case
++	 * where it can fail).
++	 */
++	struct rw_snode *gtail;
++	/* Fancy way to allocate the snode */
++	uint64_t ngid_vec;
++
++	/* Maintain the snode list that tells how many sockets are active */
++	struct numa_head numa_list;
++};
++
++#define for_each_snode(pos, head) \
++	for (pos = (head)->next; \
++	     pos != head; \
++	     pos = (pos)->next)
++
++#define for_each_snode_safe(pos, tmp, head) \
++	for (pos = (head)->next, \
++	     tmp = (pos)->next; \
++	     pos != head; \
++	     pos = tmp, tmp = (pos)->next)
++
++extern struct rwcst_semaphore *rwsem_cst_down_read_cst_failed(struct rwcst_semaphore *sem);
++extern struct rwcst_semaphore *rwsem_cst_down_write_cst_failed(struct rwcst_semaphore *sem);
++extern struct rwcst_semaphore *rwsem_cst_down_write_cst_failed_killable(struct rwcst_semaphore *sem);
++extern struct rwcst_semaphore *rwsem_cst_wake(struct rwcst_semaphore *);
++extern struct rwcst_semaphore *rwsem_cst_downgrade_wake(struct rwcst_semaphore *sem);
++
++/* In all implementations count != 0 means locked */
++static inline int rwsem_cst_is_locked(struct rwcst_semaphore *sem)
++{
++	struct rw_snode *snode = NULL;
++	struct atomic_list_head *pos;
++
++	if (sem->gtail != NULL)
++		return 1;
++
++	for_each_snode(pos, &sem->numa_list.head) {
++		if (READ_ONCE(snode->active_readers))
++			return 1;
++	}
++	return 0;
++}
++
++/* Common initializer macros and functions */
++
++#define __RWSEM_CST_INITIALIZER(lockname)			\
++	{ .serving_socket = NULL \
++	, .gtail = NULL \
++	, .ngid_vec = 0 \
++	, .numa_list.head.next = &(lockname).numa_list.head \
++	}
++
++#define DECLARE_RWSEM_CST(name) \
++	struct rwcst_semaphore name = __RWSEM_CST_INITIALIZER(name)
++
++extern void __init_rwsem_cst(struct rwcst_semaphore *sem, const char *name,
++			 struct lock_class_key *key);
++
++#define init_rwsem_cst(sem)					\
++do {								\
++	static struct lock_class_key __key;			\
++								\
++	__init_rwsem_cst((sem), #sem, &__key);			\
++} while (0)
++
++/*
++ * This is the same regardless of which rwsem_cst implementation that is being used.
++ * It is just a heuristic meant to be called by somebody alreadying holding the
++ * rwsem_cst to see if somebody from an incompatible type is wanting access to the
++ * lock.
++ */
++static inline int rwsem_cst_is_contended(struct rwcst_semaphore *sem)
++{
++	return (sem->gtail != NULL);
++}
++
++/*
++ * lock for reading
++ */
++extern void down_read_cst(struct rwcst_semaphore *sem);
++
++/*
++ * trylock for reading -- returns 1 if successful, 0 if contention
++ */
++extern int down_read_cst_trylock(struct rwcst_semaphore *sem);
++
++/*
++ * lock for writing
++ */
++extern void down_write_cst(struct rwcst_semaphore *sem);
++extern int __must_check down_write_cst_killable(struct rwcst_semaphore *sem);
++extern int __must_check down_read_cst_killable(struct rwcst_semaphore *sem);
++
++/*
++ * trylock for writing -- returns 1 if successful, 0 if contention
++ */
++extern int down_write_cst_trylock(struct rwcst_semaphore *sem);
++
++/*
++ * release a read lock
++ */
++extern void up_read_cst(struct rwcst_semaphore *sem);
++
++/*
++ * release a write lock
++ */
++extern void up_write_cst(struct rwcst_semaphore *sem);
++
++/*
++ * downgrade write lock to read lock
++ */
++extern void downgrade_write_cst(struct rwcst_semaphore *sem);
++
++/*
++ * with our lock design, we need to have a destroy mechanism as well
++ */
++extern void __deinit_rwsem_cst(struct rwcst_semaphore *sem); 
++
++# define down_read_cst_nested(sem, subclass)		down_read_cst(sem)
++# define down_write_cst_nest_lock(sem, nest_lock)	down_write_cst(sem)
++# define down_write_cst_nested(sem, subclass)	down_write_cst(sem)
++# define down_write_cst_killable_nested(sem, subclass)	down_write_cst_killable(sem)
++# define down_read_cst_non_owner(sem)		down_read_cst(sem)
++# define up_read_cst_non_owner(sem)			up_read_cst(sem)
++
++#endif /* _LINUX_RWSEM_CST_H */
+diff --git a/include/linux/sched.h b/include/linux/sched.h
+index 977cb57..d1b019d 100644
+--- a/include/linux/sched.h
++++ b/include/linux/sched.h
+@@ -661,6 +661,7 @@ struct task_struct {
+ 	unsigned int			policy;
+ 	int				nr_cpus_allowed;
+ 	cpumask_t			cpus_allowed;
++	cpumask_t 			holding_cpus_allowed;
+ 
+ #ifdef CONFIG_PREEMPT_RCU
+ 	int				rcu_read_lock_nesting;
+diff --git a/ipc/shm.c b/ipc/shm.c
+index 4cd402e..dce9568 100644
+--- a/ipc/shm.c
++++ b/ipc/shm.c
+@@ -1518,7 +1518,7 @@ long do_shmat(int shmid, char __user *shmaddr, int shmflg,
+ 	if (err)
+ 		goto out_fput;
+ 
+-	if (down_write_killable(&current->mm->mmap_sem)) {
++	if (down_write_cst_killable(&current->mm->mmap_sem)) {
+ 		err = -EINTR;
+ 		goto out_fput;
+ 	}
+@@ -1538,7 +1538,7 @@ long do_shmat(int shmid, char __user *shmaddr, int shmflg,
+ 	if (IS_ERR_VALUE(addr))
+ 		err = (long)addr;
+ invalid:
+-	up_write(&current->mm->mmap_sem);
++	up_write_cst(&current->mm->mmap_sem);
+ 	if (populate)
+ 		mm_populate(addr, populate);
+ 
+@@ -1612,7 +1612,7 @@ long ksys_shmdt(char __user *shmaddr)
+ 	if (addr & ~PAGE_MASK)
+ 		return retval;
+ 
+-	if (down_write_killable(&mm->mmap_sem))
++	if (down_write_cst_killable(&mm->mmap_sem))
+ 		return -EINTR;
+ 
+ 	/*
+@@ -1700,7 +1700,7 @@ long ksys_shmdt(char __user *shmaddr)
+ 
+ #endif
+ 
+-	up_write(&mm->mmap_sem);
++	up_write_cst(&mm->mmap_sem);
+ 	return retval;
+ }
+ 
+diff --git a/kernel/acct.c b/kernel/acct.c
+index addf773..c53a509 100644
+--- a/kernel/acct.c
++++ b/kernel/acct.c
+@@ -539,13 +539,13 @@ void acct_collect(long exitcode, int group_dead)
+ 	if (group_dead && current->mm) {
+ 		struct vm_area_struct *vma;
+ 
+-		down_read(&current->mm->mmap_sem);
++		down_read_cst(&current->mm->mmap_sem);
+ 		vma = current->mm->mmap;
+ 		while (vma) {
+ 			vsize += vma->vm_end - vma->vm_start;
+ 			vma = vma->vm_next;
+ 		}
+-		up_read(&current->mm->mmap_sem);
++		up_read_cst(&current->mm->mmap_sem);
+ 	}
+ 
+ 	spin_lock_irq(&current->sighand->siglock);
+diff --git a/kernel/bpf/stackmap.c b/kernel/bpf/stackmap.c
+index 8061a43..84aab86 100644
+--- a/kernel/bpf/stackmap.c
++++ b/kernel/bpf/stackmap.c
+@@ -13,6 +13,7 @@
+ #include <linux/pagemap.h>
+ #include <linux/irq_work.h>
+ #include "percpu_freelist.h"
++#include <linux/rwsem_cst.h>
+ 
+ #define STACK_CREATE_FLAG_MASK					\
+ 	(BPF_F_NUMA_NODE | BPF_F_RDONLY | BPF_F_WRONLY |	\
+@@ -36,7 +37,7 @@ struct bpf_stack_map {
+ /* irq_work to run up_read() for build_id lookup in nmi context */
+ struct stack_map_irq_work {
+ 	struct irq_work irq_work;
+-	struct rw_semaphore *sem;
++	struct rwcst_semaphore *sem;
+ };
+ 
+ static void do_up_read(struct irq_work *entry)
+@@ -44,7 +45,7 @@ static void do_up_read(struct irq_work *entry)
+ 	struct stack_map_irq_work *work;
+ 
+ 	work = container_of(entry, struct stack_map_irq_work, irq_work);
+-	up_read(work->sem);
++	up_read_cst(work->sem);
+ 	work->sem = NULL;
+ }
+ 
+@@ -305,7 +306,7 @@ static void stack_map_get_build_id_offset(struct bpf_stack_build_id *id_offs,
+ 	 * with build_id.
+ 	 */
+ 	if (!user || !current || !current->mm || irq_work_busy ||
+-	    down_read_trylock(&current->mm->mmap_sem) == 0) {
++	    down_read_cst_trylock(&current->mm->mmap_sem) == 0) {
+ 		/* cannot access current->mm, fall back to ips */
+ 		for (i = 0; i < trace_nr; i++) {
+ 			id_offs[i].status = BPF_STACK_BUILD_ID_IP;
+@@ -328,7 +329,7 @@ static void stack_map_get_build_id_offset(struct bpf_stack_build_id *id_offs,
+ 	}
+ 
+ 	if (!work) {
+-		up_read(&current->mm->mmap_sem);
++		up_read_cst(&current->mm->mmap_sem);
+ 	} else {
+ 		work->sem = &current->mm->mmap_sem;
+ 		irq_work_queue(&work->irq_work);
+diff --git a/kernel/events/core.c b/kernel/events/core.c
+index c80549b..fce896f 100644
+--- a/kernel/events/core.c
++++ b/kernel/events/core.c
+@@ -8780,7 +8780,7 @@ static void perf_event_addr_filters_apply(struct perf_event *event)
+ 	if (!mm)
+ 		goto restart;
+ 
+-	down_read(&mm->mmap_sem);
++	down_read_cst(&mm->mmap_sem);
+ 
+ 	raw_spin_lock_irqsave(&ifh->lock, flags);
+ 	list_for_each_entry(filter, &ifh->list, entry) {
+@@ -8800,7 +8800,7 @@ static void perf_event_addr_filters_apply(struct perf_event *event)
+ 	event->addr_filters_gen++;
+ 	raw_spin_unlock_irqrestore(&ifh->lock, flags);
+ 
+-	up_read(&mm->mmap_sem);
++	up_read_cst(&mm->mmap_sem);
+ 
+ 	mmput(mm);
+ 
+diff --git a/kernel/events/uprobes.c b/kernel/events/uprobes.c
+index 3207a4d..4f390df 100644
+--- a/kernel/events/uprobes.c
++++ b/kernel/events/uprobes.c
+@@ -809,7 +809,7 @@ register_for_each_vma(struct uprobe *uprobe, struct uprobe_consumer *new)
+ 		if (err && is_register)
+ 			goto free;
+ 
+-		down_write(&mm->mmap_sem);
++		down_write_cst(&mm->mmap_sem);
+ 		vma = find_vma(mm, info->vaddr);
+ 		if (!vma || !valid_vma(vma, is_register) ||
+ 		    file_inode(vma->vm_file) != uprobe->inode)
+@@ -831,7 +831,7 @@ register_for_each_vma(struct uprobe *uprobe, struct uprobe_consumer *new)
+ 		}
+ 
+  unlock:
+-		up_write(&mm->mmap_sem);
++		up_write_cst(&mm->mmap_sem);
+  free:
+ 		mmput(mm);
+ 		info = free_map_info(info);
+@@ -976,7 +976,7 @@ static int unapply_uprobe(struct uprobe *uprobe, struct mm_struct *mm)
+ 	struct vm_area_struct *vma;
+ 	int err = 0;
+ 
+-	down_read(&mm->mmap_sem);
++	down_read_cst(&mm->mmap_sem);
+ 	for (vma = mm->mmap; vma; vma = vma->vm_next) {
+ 		unsigned long vaddr;
+ 		loff_t offset;
+@@ -993,7 +993,7 @@ static int unapply_uprobe(struct uprobe *uprobe, struct mm_struct *mm)
+ 		vaddr = offset_to_vaddr(vma, uprobe->offset);
+ 		err |= remove_breakpoint(uprobe, mm, vaddr);
+ 	}
+-	up_read(&mm->mmap_sem);
++	up_read_cst(&mm->mmap_sem);
+ 
+ 	return err;
+ }
+@@ -1143,7 +1143,7 @@ static int xol_add_vma(struct mm_struct *mm, struct xol_area *area)
+ 	struct vm_area_struct *vma;
+ 	int ret;
+ 
+-	if (down_write_killable(&mm->mmap_sem))
++	if (down_write_cst_killable(&mm->mmap_sem))
+ 		return -EINTR;
+ 
+ 	if (mm->uprobes_state.xol_area) {
+@@ -1173,7 +1173,7 @@ static int xol_add_vma(struct mm_struct *mm, struct xol_area *area)
+ 	/* pairs with get_xol_area() */
+ 	smp_store_release(&mm->uprobes_state.xol_area, area); /* ^^^ */
+  fail:
+-	up_write(&mm->mmap_sem);
++	up_write_cst(&mm->mmap_sem);
+ 
+ 	return ret;
+ }
+@@ -1739,7 +1739,7 @@ static struct uprobe *find_active_uprobe(unsigned long bp_vaddr, int *is_swbp)
+ 	struct uprobe *uprobe = NULL;
+ 	struct vm_area_struct *vma;
+ 
+-	down_read(&mm->mmap_sem);
++	down_read_cst(&mm->mmap_sem);
+ 	vma = find_vma(mm, bp_vaddr);
+ 	if (vma && vma->vm_start <= bp_vaddr) {
+ 		if (valid_vma(vma, false)) {
+@@ -1757,7 +1757,7 @@ static struct uprobe *find_active_uprobe(unsigned long bp_vaddr, int *is_swbp)
+ 
+ 	if (!uprobe && test_and_clear_bit(MMF_RECALC_UPROBES, &mm->flags))
+ 		mmf_recalc_uprobes(mm);
+-	up_read(&mm->mmap_sem);
++	up_read_cst(&mm->mmap_sem);
+ 
+ 	return uprobe;
+ }
+diff --git a/kernel/exit.c b/kernel/exit.c
+index 0e21e6d..08a82210 100644
+--- a/kernel/exit.c
++++ b/kernel/exit.c
+@@ -508,12 +508,12 @@ static void exit_mm(void)
+ 	 * will increment ->nr_threads for each thread in the
+ 	 * group with ->mm != NULL.
+ 	 */
+-	down_read(&mm->mmap_sem);
++	down_read_cst(&mm->mmap_sem);
+ 	core_state = mm->core_state;
+ 	if (core_state) {
+ 		struct core_thread self;
+ 
+-		up_read(&mm->mmap_sem);
++		up_read_cst(&mm->mmap_sem);
+ 
+ 		self.task = current;
+ 		self.next = xchg(&core_state->dumper.next, &self);
+@@ -531,14 +531,14 @@ static void exit_mm(void)
+ 			freezable_schedule();
+ 		}
+ 		__set_current_state(TASK_RUNNING);
+-		down_read(&mm->mmap_sem);
++		down_read_cst(&mm->mmap_sem);
+ 	}
+ 	mmgrab(mm);
+ 	BUG_ON(mm != current->active_mm);
+ 	/* more a memory barrier than a real lock */
+ 	task_lock(current);
+ 	current->mm = NULL;
+-	up_read(&mm->mmap_sem);
++	up_read_cst(&mm->mmap_sem);
+ 	enter_lazy_tlb(mm, current);
+ 	task_unlock(current);
+ 	mm_update_next_owner(mm);
+diff --git a/kernel/fork.c b/kernel/fork.c
+index f0b5847..a13d89c 100644
+--- a/kernel/fork.c
++++ b/kernel/fork.c
+@@ -428,7 +428,7 @@ static __latent_entropy int dup_mmap(struct mm_struct *mm,
+ 	LIST_HEAD(uf);
+ 
+ 	uprobe_start_dup_mmap();
+-	if (down_write_killable(&oldmm->mmap_sem)) {
++	if (down_write_cst_killable(&oldmm->mmap_sem)) {
+ 		retval = -EINTR;
+ 		goto fail_uprobe_end;
+ 	}
+@@ -437,7 +437,8 @@ static __latent_entropy int dup_mmap(struct mm_struct *mm,
+ 	/*
+ 	 * Not linked in yet - no deadlock potential:
+ 	 */
+-	down_write_nested(&mm->mmap_sem, SINGLE_DEPTH_NESTING);
++	/* down_write_nested(&mm->mmap_sem, SINGLE_DEPTH_NESTING); */
++	down_write_cst(&mm->mmap_sem);
+ 
+ 	/* No ordering required: file already has been exposed. */
+ 	RCU_INIT_POINTER(mm->exe_file, get_mm_exe_file(oldmm));
+@@ -552,9 +553,9 @@ static __latent_entropy int dup_mmap(struct mm_struct *mm,
+ 	/* a new mm has just been created */
+ 	retval = arch_dup_mmap(oldmm, mm);
+ out:
+-	up_write(&mm->mmap_sem);
++	up_write_cst(&mm->mmap_sem);
+ 	flush_tlb_mm(oldmm);
+-	up_write(&oldmm->mmap_sem);
++	up_write_cst(&oldmm->mmap_sem);
+ 	dup_userfaultfd_complete(&uf);
+ fail_uprobe_end:
+ 	uprobe_end_dup_mmap();
+@@ -929,7 +930,7 @@ static struct mm_struct *mm_init(struct mm_struct *mm, struct task_struct *p,
+ 	mm->vmacache_seqnum = 0;
+ 	atomic_set(&mm->mm_users, 1);
+ 	atomic_set(&mm->mm_count, 1);
+-	init_rwsem(&mm->mmap_sem);
++	init_rwsem_cst(&mm->mmap_sem);
+ 	INIT_LIST_HEAD(&mm->mmlist);
+ 	mm->core_state = NULL;
+ 	mm_pgtables_bytes_init(mm);
+@@ -1759,6 +1760,8 @@ static __latent_entropy struct task_struct *copy_process(
+ 	p->vfork_done = NULL;
+ 	spin_lock_init(&p->alloc_lock);
+ 
++	cpumask_clear(&p->holding_cpus_allowed);
++
+ 	init_sigpending(&p->pending);
+ 
+ 	p->utime = p->stime = p->gtime = 0;
+diff --git a/kernel/futex.c b/kernel/futex.c
+index 11fc3bb..f5cfe8c 100644
+--- a/kernel/futex.c
++++ b/kernel/futex.c
+@@ -726,10 +726,10 @@ static int fault_in_user_writeable(u32 __user *uaddr)
+ 	struct mm_struct *mm = current->mm;
+ 	int ret;
+ 
+-	down_read(&mm->mmap_sem);
++	down_read_cst(&mm->mmap_sem);
+ 	ret = fixup_user_fault(current, mm, (unsigned long)uaddr,
+ 			       FAULT_FLAG_WRITE, NULL);
+-	up_read(&mm->mmap_sem);
++	up_read_cst(&mm->mmap_sem);
+ 
+ 	return ret < 0 ? ret : 0;
+ }
+diff --git a/kernel/locking/Makefile b/kernel/locking/Makefile
+index 392c7f2..cc427dba 100644
+--- a/kernel/locking/Makefile
++++ b/kernel/locking/Makefile
+@@ -3,7 +3,7 @@
+ # and is generally not a function of system call inputs.
+ KCOV_INSTRUMENT		:= n
+ 
+-obj-y += mutex.o semaphore.o rwsem.o percpu-rwsem.o
++obj-y += mutex.o semaphore.o rwsem.o percpu-rwsem.o rwsem_cst.o mutex_cstmcsvar.o
+ 
+ ifdef CONFIG_FUNCTION_TRACER
+ CFLAGS_REMOVE_lockdep.o = $(CC_FLAGS_FTRACE)
+diff --git a/kernel/locking/mutex_cst.c b/kernel/locking/mutex_cst.c
+new file mode 100644
+index 0000000..b1c5b98
+--- /dev/null
++++ b/kernel/locking/mutex_cst.c
+@@ -0,0 +1,597 @@
++/*
++ * kernel/locking/mutex_cst.c
++ *
++ * Developed by Sanidhya & Changwoo
++ *
++ * Copyright (C) 2016   Sanidhya Kashyap    <sanidhya@gatech.edu>,
++ *                      Changwoo Min        <changwoo@gatech.edu>
++ */
++
++#include <linux/mutex_cst.h>
++#include <linux/sched.h>
++#include <linux/export.h>
++#include <linux/spinlock.h>
++#include <linux/interrupt.h>
++#include <linux/osq_lock.h>
++#include <linux/topology.h>
++#include <asm/uaccess.h>
++
++#include "mutex_cst.h"
++
++/*
++ * Declarations
++ */
++static inline uint16_t numa_get_gid(uint64_t ngid_vec, uint16_t nid);
++static inline struct snode *get_snode(struct cst_mutex *lock, uint16_t nid);
++static inline struct snode *find_snode(struct cst_mutex *lock, uint16_t nid);
++static inline struct snode *add_snode(struct cst_mutex *lock, uint16_t nid,
++				      uint16_t gid);
++static inline struct snode *alloc_snode(struct cst_mutex *lock, int32_t nid);
++static inline void *malloc_at_numa_node(size_t size, int32_t nid);
++
++static void __always_inline numa_get_nid(struct nid_clock_info *v)
++{
++	const static uint32_t NUMA_ID_BASE = 1;
++	v->nid = numa_node_id() + NUMA_ID_BASE;
++	/* v->timestamp = get_cycles(); */
++}
++
++void cst_mutex_init(struct cst_mutex *lock)
++{
++	lock->nice = 0;
++	lock->serving_socket = NULL;
++	lock->gtail = NULL;
++	lock->ngid_vec = 0;
++	lock->numa_list.head.next = &lock->numa_list.head;
++}
++EXPORT_SYMBOL(cst_mutex_init);
++
++static inline void list_add_unsafe(struct atomic_list_head *new,
++				   struct atomic_list_head *head)
++{
++	volatile struct atomic_list_head *old;
++
++	/* there can be concurrent enqueuers */
++	new->next = head->next;
++	old = smp_swap(&head->next, new);
++	new->next = old;
++	smp_wmb();
++}
++
++static inline void wake_up_waiters(struct snode *snode)
++{
++#if 0
++	struct cst_mutex_waiter *pos, *tmp;
++	spin_lock(&snode->wait_lock);
++	list_for_each_entry_safe(pos, tmp, &snode->wait_list, list) {
++		wake_up_process(pos->task);
++		__list_del(pos->list.prev, pos->list.next);
++	}
++	spin_unlock(&snode->wait_lock);
++#endif
++	struct cst_mutex_waiter *pos, *tmp;
++	int flag = 0;
++	WAKE_Q(wake_q);
++	spin_lock(&snode->wait_lock);
++	list_for_each_entry_safe(pos, tmp, &snode->wait_list, list) {
++		wake_q_add(&wake_q, pos->task);
++		list_del(&pos->list);
++		flag = 1;
++	}
++	spin_unlock(&snode->wait_lock);
++	if (flag == 1)
++		wake_up_q(&wake_q);
++}
++
++static inline void wake_up_single_waiter(struct snode *snode)
++{
++	struct cst_mutex_waiter *pos, *tmp;
++	int flag = 0;
++	WAKE_Q(wake_q);
++	spin_lock(&snode->wait_lock);
++	list_for_each_entry_safe(pos, tmp, &snode->wait_list, list) {
++		if (snode->now_serving == pos->ticket) {
++			flag = 1;
++			break;
++		}
++	}
++	if (flag == 1) {
++		wake_q_add(&wake_q, pos->task);
++		list_del(&pos->list);
++	}
++	spin_unlock(&snode->wait_lock);
++	if (flag == 1)
++		wake_up_q(&wake_q);
++
++}
++
++static inline int try_acquire_global(struct cst_mutex *lock, struct snode *snode)
++{
++	snode->gnext = NULL;
++	snode->status = STATE_PARKED;
++	smp_mb();
++
++	if (smp_cas(&lock->gtail, NULL, snode)) {
++		snode->status = STATE_LOCKED;
++		return 1;
++	}
++
++	return 0;
++}
++
++static inline int cst_trylock(struct cst_mutex* lock)
++{
++	struct snode *snode;
++	int32_t nid;
++	struct nid_clock_info info;
++	int32_t curr_ticket, new_ticket;
++	uint64_t cmp_ticket, new_cmp_ticket;
++
++
++	numa_get_nid(&info);
++	nid = info.nid;
++	snode = get_snode(lock, nid);
++
++	preempt_disable();
++	curr_ticket = snode->next_ticket;
++	new_ticket = curr_ticket + 1;
++	cmp_ticket = ((uint64_t)curr_ticket) + curr_ticket;
++	new_cmp_ticket = ((uint64_t)new_ticket) + new_ticket;
++
++	if (!smp_cas(&snode->next_ticket, cmp_ticket, new_cmp_ticket))
++		goto out;
++
++	if (snode->lock_granted == 1) {
++		snode->lock_granted = 0;
++		preempt_enable();
++		return 0;
++	}
++
++	/* Till here, it is successful, now trying to grab the global lock */
++	if(try_acquire_global(lock, snode)) {
++		preempt_enable();
++		return 0;
++	}
++
++	snode->now_serving++;
++     out:
++	preempt_enable();
++	return 1;
++}
++
++static inline int try_acquire_global_lock(struct snode *snode)
++{
++	if (snode->status == STATE_LOCKED)
++		return true;
++	return false;
++}
++
++static inline void acquire_global(struct cst_mutex *lock, struct snode *snode)
++{
++	struct snode *old_snode;
++
++	snode->gnext = NULL;
++	snode->status = STATE_PARKED;
++	barrier();
++
++	old_snode = (struct snode *)smp_swap(&lock->gtail, snode);
++	if (!old_snode) {
++		snode->status = STATE_LOCKED;
++		return;
++	}
++
++	old_snode->gnext = snode;
++	do {
++		if (try_acquire_global_lock(snode))
++			break;
++
++		/* if (lock->serving_socket->gnext == snode) {
++			if (need_resched())
++				schedule_preempt_disabled();
++		} else */
++		if (need_resched())
++			schedule_preempt_disabled();
++
++		cpu_relax_lowlatency();
++	} while(true);
++}
++
++static inline int try_acquire_local_lock(struct snode *snode, int ticket,
++					 struct task_struct *task)
++{
++	if (snode->now_serving == ticket) {
++		snode->holder = task;
++		//set_user_nice(task, task->saved_prio);
++		return true;
++	}
++	return false;
++}
++
++static inline int calc_niceness(struct snode *snode, int ticket)
++{
++	int nr_running_tasks = nr_running_tasks_current_rq();
++	return min(snode->next_ticket - ticket + nr_running_tasks, MAX_NICE);
++}
++
++static inline int wait_for_local_lock(struct cst_mutex *lock,
++				      struct snode *snode,
++				      int ticket, int state,
++				      struct task_struct *task)
++{
++	struct cst_mutex_waiter waiter;
++
++	//task->saved_prio = task_nice(task);
++	if (try_acquire_local_lock(snode, ticket, task))
++		goto check_local_lock_grant;
++
++     retry:
++	for (;;) {
++		if (lock->serving_socket == snode ||
++		    lock->serving_socket == NULL) {
++			if (try_acquire_local_lock(snode, ticket, task))
++				goto check_local_lock_grant;
++			//set_user_nice(task, task->saved_prio + 1);
++			if (need_resched())
++				schedule_preempt_disabled();
++		} else {
++			if (need_resched())
++				schedule_preempt_disabled();
++				break;
++		}
++		cpu_relax_lowlatency();
++	}
++
++	/* It does not belong to the serving socket, thus, going to park myself */
++#if 0
++	spin_lock(&snode->wait_lock);
++
++	if (snode->now_serving == ticket) {
++		spin_unlock(&snode->wait_lock);
++		goto check_local_lock_grant;
++	}
++
++	list_add_tail(&waiter.list, &snode->wait_list);
++	waiter.task = task;
++	waiter.ticket = ticket;
++
++	__set_task_state(task, state);
++	spin_unlock(&snode->wait_lock);
++	schedule_preempt_disabled();
++	__set_task_state(task, TASK_RUNNING);
++#endif
++	barrier();
++	if (ticket != snode->now_serving)
++		goto retry;
++
++     check_local_lock_grant:
++	if (snode->lock_granted == 1) {
++		snode->lock_granted = 0;
++		return true;;
++	}
++	return false;
++}
++
++static inline int cstlock_acquire(struct cst_mutex* lock, int state)
++{
++	struct nid_clock_info info;
++	struct snode *snode;
++	struct task_struct *task;
++	int32_t nid, my_ticket;
++
++	preempt_disable();
++	numa_get_nid(&info);
++	nid = info.nid;
++	snode = get_snode(lock, nid);
++
++	/* right now, adding the lock to the snode */
++	my_ticket = smp_faa(&snode->next_ticket, 1);
++
++	/* read side CS is over */
++	/* currently, need to get the ticket */
++	task = current;
++	if (wait_for_local_lock(lock, snode, my_ticket, state, task))
++		goto acquired;
++	/*
++	 * if the ticket is already obtained and lock_granted is set, then
++	 * acquire the lock as are the snode which has the serving socket
++	 */
++
++	acquire_global(lock, snode);
++	lock->serving_socket = snode;
++
++     acquired:
++	preempt_enable();
++	return 0;
++}
++
++void cstlock_release(struct cst_mutex* lock)
++{
++	struct snode *snode;
++	int now_serving = 0;
++
++	preempt_disable();
++	snode = (struct snode *)lock->serving_socket;
++
++	now_serving = snode->now_serving + 1;
++	if (snode->next_ticket != now_serving) {
++		--snode->num_proc;
++		if (snode->num_proc) {
++			snode->lock_granted = 1;
++			goto out;
++		}
++		snode->num_proc = NUMA_BATCH_SIZE;
++	}
++
++	if (!snode->gnext) {
++		if (smp_cas(&lock->gtail, snode, NULL)) {
++			goto out;
++		}
++		while (!snode->gnext)
++			smp_rmb();
++	}
++	snode->gnext->status = STATE_LOCKED;
++	//wake_up_waiters(snode->gnext);
++
++     out:
++	snode->now_serving = now_serving;
++	preempt_enable();
++	//wake_up_single_waiter(snode);
++}
++
++int cst_mutex_is_locked(struct cst_mutex *lock)
++{
++	struct snode *snode;
++	struct atomic_list_head *numa_entry;
++
++	snode = (struct snode *)lock->serving_socket;
++	if (likely(snode)) {
++		numa_entry = (struct atomic_list_head *)lock->numa_list.head.next;
++		while (numa_entry) {
++			snode = container_of(numa_entry, struct snode, numa_node);
++			if (READ_ONCE(snode->now_serving) != READ_ONCE(snode->next_ticket))
++				return 1;
++			numa_entry = (struct atomic_list_head *)numa_entry->next;
++		}
++	}
++	return 0;
++}
++EXPORT_SYMBOL(cst_mutex_is_locked);
++
++void __sched cst_mutex_lock(struct cst_mutex *lock)
++{
++	might_sleep();
++	cstlock_acquire(lock, TASK_UNINTERRUPTIBLE);
++}
++EXPORT_SYMBOL(cst_mutex_lock);
++
++int __sched cst_mutex_trylock(struct cst_mutex *lock)
++{
++	return cst_trylock(lock);
++}
++EXPORT_SYMBOL(cst_mutex_trylock);
++
++int __must_check __sched cst_mutex_lock_interruptible(struct cst_mutex *lock)
++{
++	might_sleep();
++	return cstlock_acquire(lock, TASK_INTERRUPTIBLE);
++}
++EXPORT_SYMBOL(cst_mutex_lock_interruptible);
++
++int __must_check __sched cst_mutex_lock_killable(struct cst_mutex *lock)
++{
++	might_sleep();
++	return cstlock_acquire(lock, TASK_KILLABLE);
++}
++EXPORT_SYMBOL(cst_mutex_lock_killable);
++
++void __sched cst_mutex_unlock(struct cst_mutex *lock)
++{
++	cstlock_release(lock);
++}
++EXPORT_SYMBOL(cst_mutex_unlock);
++
++int __sched cst_atomic_dec_and_mutex_lock(atomic_t *cnt, struct cst_mutex *lock)
++{
++	if (atomic_add_unless(cnt, -1, 1))
++		return 0;
++
++	cst_mutex_lock(lock);
++	if (!atomic_dec_and_test(cnt)) {
++		cst_mutex_unlock(lock);
++		return 0;
++	}
++	return 1;
++}
++EXPORT_SYMBOL(cst_atomic_dec_and_mutex_lock);
++
++
++void cst_mutex_destroy(struct cst_mutex *lock)
++{
++	struct snode *snode;
++	struct atomic_list_head *numa_entry, *tmp;
++
++	numa_entry = (struct atomic_list_head *)lock->numa_list.head.next;
++	while (numa_entry && numa_entry != &lock->numa_list.head) {
++		snode = container_of(numa_entry, struct snode, numa_node);
++		tmp = (struct atomic_list_head *)numa_entry->next;
++		kfree(snode);
++		numa_entry = tmp;
++	}
++	lock->numa_list.head.next = &lock->numa_list.head;
++}
++EXPORT_SYMBOL(cst_mutex_destroy);
++
++/* All the dark magic will be down the drain */
++static inline struct snode *get_snode(struct cst_mutex *lock, uint16_t nid)
++{
++	struct snode *snode, *tmp_snode;
++	uint16_t gid;
++
++     retry_snode:
++	/* short cut for serving_socket */
++	tmp_snode = (struct snode *)smp_load_acquire(&lock->serving_socket);
++	if (tmp_snode && tmp_snode->nid == nid) {
++		return tmp_snode;
++	}
++
++	/* get snode */
++	gid = numa_get_gid(lock->ngid_vec, nid);
++	/* This is where the read CS begins */
++	/* check whether the list is in use or not */
++	if (numa_gid_not_empty(gid)) {
++		/* snode may be already existing, let's get it */
++		snode = find_snode(lock, nid);
++	} else {
++		snode = add_snode(lock, nid, gid);
++	}
++	/*
++	 * even though gid was existing, but snode has not been created,
++	 * someone else is doing it for us
++	 */
++	if (!snode) {
++		goto retry_snode;
++	}
++	return snode;
++}
++
++static inline uint16_t numa_get_gid(uint64_t ngid_vec, uint16_t nid)
++{
++	uint64_t nid_mask = NUMA_NID_MASK(nid);
++	uint16_t gid_value = (ngid_vec & nid_mask) >> NUMA_GID_SHIFT(nid);
++	return gid_value;
++}
++
++static inline uint64_t  numa_set_gid(uint64_t ngid_vec,
++				     uint16_t nid, uint16_t gid)
++{
++	uint64_t nid_mask = NUMA_NID_MASK(nid);
++	uint64_t gid_mask = NUMA_GID_MASK(nid, gid);
++	return (ngid_vec & ~nid_mask) | gid_mask;
++}
++
++/**
++ * init of snode
++ */
++static inline struct snode *find_snode(struct cst_mutex *lock, uint16_t nid)
++{
++	struct snode *snode;
++	struct atomic_list_head *numa_entry;
++
++	/* check whether it belongs to the serving snode */
++	snode = (struct snode *)lock->serving_socket;
++	if (snode && snode->nid == nid) {
++		return snode;
++	}
++
++	numa_entry = (struct atomic_list_head *)lock->numa_list.head.next;
++	while (numa_entry && numa_entry != &lock->numa_list.head) {
++		snode = container_of(numa_entry, struct snode, numa_node);
++		if (snode->nid == nid) {
++			return snode;
++		}
++		numa_entry = (struct atomic_list_head *)numa_entry->next;
++	}
++	return NULL;
++}
++
++static inline struct snode *add_snode(struct cst_mutex *lock, uint16_t nid,
++				      uint16_t gid)
++{
++	uint64_t old_ngid_vec;
++	uint64_t new_ngid_vec;
++	uint16_t new_gid;
++	struct snode *snode = NULL;
++
++	/*
++	 * XXX: I can simplify this one to have 64 bit vector to get the snode.
++	 * BUT, I will keep it if we go for the cst global memory allocator
++	 * for the kernel. If we don't then can be easily changed.
++	 */
++
++	new_gid = numa_gid_inc(gid) | 0x1;
++	do {
++		/* prepare new_ngid_vec */
++		old_ngid_vec = lock->ngid_vec;
++		new_ngid_vec = numa_set_gid(old_ngid_vec, nid, new_gid);
++
++		/*
++		 * do another check again since, it is possible that somehow
++		 * someone might have obtained the same gid
++		 */
++		if (old_ngid_vec == new_ngid_vec) {
++			return find_snode(lock, nid);
++		}
++
++		/* try to atomically update ngid_vec using cas */
++		if (lock->ngid_vec == old_ngid_vec &&
++		    smp_cas(&lock->ngid_vec, old_ngid_vec, new_ngid_vec)) {
++			/* succeeded in updating ngid_vec
++			 * meaning that this thread is a winner
++			 * even if there was contention on updating ngid_vec */
++			break;
++		} else  {
++			/*
++			 * this thread is a looser in updating ngid_vec
++			 * there are two cases:
++			 */
++
++			/**
++			 * 1) if snode for nid is added by other thread,
++			 *    go back to the beginning of the lock code
++			 */
++			if (numa_gid_not_empty(numa_get_gid(lock->ngid_vec, nid))) {
++				return find_snode(lock, nid);
++			}
++
++			/**
++			 * 2) otherwise snode for other nid is added,
++			 *    retry to add_snode() for this nid
++			 */
++		}
++	} while (1);
++
++	/*
++	 * This thread succeeded in updating gid for nid.
++	 * The gid for this nid is marked as not-empty.
++	 * This thread has the responsibility of actually allocating
++	 * snode and inserting it into the numa_list. Until it is done,
++	 * all other threads for the same nid will be spinning
++	 * in the retry loop of mutex_lock().
++	 */
++	snode = alloc_snode(lock, (int32_t)nid);
++	snode->nid = nid;
++
++	/* add the new snode to the list */
++	preempt_disable();
++	list_add_unsafe(&snode->numa_node, &lock->numa_list.head);
++	snode->num_proc = NUMA_BATCH_SIZE;
++	preempt_enable();
++	return snode;
++}
++
++static inline struct snode *alloc_snode(struct cst_mutex *lock, int32_t nid)
++{
++	struct snode *snode;
++
++	snode = malloc_at_numa_node(sizeof(*snode), nid);
++	snode->gnext = NULL;
++	snode->numa_node.next = NULL;
++	snode->status = STATE_PARKED;
++	snode->next_ticket = 0;
++	snode->now_serving = 0;
++	snode->lock_granted = 0;
++	INIT_LIST_HEAD(&snode->wait_list);
++	spin_lock_init(&snode->wait_lock);
++	return snode;
++}
++
++/**
++ * allocation / deallocation of snode
++ */
++static inline void *malloc_at_numa_node(size_t size, int32_t nid)
++{
++	void *node;
++
++	node = kmalloc_node(size, GFP_ATOMIC, nid - 1);
++	return node;
++}
+diff --git a/kernel/locking/mutex_cst.h b/kernel/locking/mutex_cst.h
+new file mode 100644
+index 0000000..8197b75
+--- /dev/null
++++ b/kernel/locking/mutex_cst.h
+@@ -0,0 +1,54 @@
++#ifndef _MUTEX_CST_H_
++#define _MUTEX_CST_H_
++
++/**
++ * Timestamp + cpu and numa node info that we can get with rdtscp()
++ */
++struct nid_clock_info {
++        uint32_t nid;
++        uint64_t timestamp;
++};
++
++#define INIT_ATOMIC_LIST_HEAD(ptr)                                             \
++        do {                                                                   \
++                (ptr)->next = (ptr);                                           \
++        } while(0)
++
++
++/**
++ * mutex structure
++ */
++/* associated spin time during the traversal */
++#define DEFAULT_SPIN_TIME          (1 << 15) /* max cost to put back to rq */
++#define DEFAULT_HOLDER_SPIN_TIME   (DEFAULT_SPIN_TIME)
++#define DEFAULT_WAITER_SPIN_TIME   (DEFAULT_SPIN_TIME)
++#define DEFAULT_WAITER_WAKEUP_TIME (DEFAULT_SPIN_TIME)
++/* This is an approximation */
++#define CYCLES_TO_COUNTERS(v)      (v / (1U << 4))
++
++#define NUMA_GID_BITS               (4)  /* even = empty, odd = not empty */
++#define NUMA_GID_SHIFT(_n)          ((_n) * NUMA_GID_BITS)
++#define NUMA_MAX_DOMAINS            (64 / NUMA_GEN_ID_BITS)
++#define NUMA_NID_MASK(_n)           ((0xF) << NUMA_GID_SHIFT(_n))
++#define NUMA_GID_MASK(_n, _g)       (((_g) & (0xF)) << NUMA_GID_SHIFT(_n))
++#define numa_gid_inc(_gid)          (((_gid) & ~0x1) + 2)
++#define numa_gid_not_empty(_gid)    ((_gid) & 0x1)
++
++#define NUMA_BATCH_SIZE             (128) /* per numa throughput */
++#define NUMA_WAITING_SPINNERS       (4) /* spinners in the waiter spin phase */
++
++/* lock status */
++#define STATE_PARKED (0)
++#define STATE_LOCKED (1)
++
++/* this will be around 8 milliseconds which is huge!!! */
++#define MAX_SPIN_THRESHOLD          (1U << 20)
++/* this is the cost of a getpriority syscall. */
++#define MIN_SPIN_THRESHOLD          (1U << 7)
++
++#define smp_swap(ptr, v)        xchg((ptr), (v))
++#define smp_faa(ptr, inc)       xadd((ptr), (inc))
++#define smp_cas(ptr, old, new)  (cmpxchg((ptr), (old), (new)) == (old))
++
++
++#endif /* _MUTEX_CST_H_ */
+diff --git a/kernel/locking/mutex_cstmcsvar.c b/kernel/locking/mutex_cstmcsvar.c
+new file mode 100644
+index 0000000..cb03a82
+--- /dev/null
++++ b/kernel/locking/mutex_cstmcsvar.c
+@@ -0,0 +1,559 @@
++/*
++ * kernel/locking/mutex_cst.c
++ *
++ * Developed by Sanidhya & Changwoo
++ *
++ * Copyright (C) 2016   Sanidhya Kashyap    <sanidhya@gatech.edu>,
++ *                      Changwoo Min        <changwoo@gatech.edu>
++ */
++
++#include <linux/mutex_cstmcsvar.h>
++#include <linux/sched.h>
++#include <linux/export.h>
++#include <linux/spinlock.h>
++#include <linux/interrupt.h>
++#include <linux/osq_lock.h>
++#include <linux/topology.h>
++#include <asm/uaccess.h>
++#include <linux/wait.h>
++
++#include "mutex_cstmcsvar.h"
++
++/*
++ * Declarations
++ */
++static inline uint16_t numa_get_gid(uint64_t ngid_vec, uint16_t nid);
++static inline struct mutex_snode *get_snode(struct cst_mutex *lock, uint16_t nid);
++static inline struct mutex_snode *find_snode(struct cst_mutex *lock, uint16_t nid);
++static inline struct mutex_snode *add_snode(struct cst_mutex *lock, uint16_t nid,
++				      uint16_t gid);
++static inline struct mutex_snode *alloc_snode(struct cst_mutex *lock, int32_t nid);
++static inline void *malloc_at_numa_node(size_t size, int32_t nid);
++static inline void __cstmutex_local_unlock(struct mutex_snode *snode);
++
++static void __always_inline numa_get_nid(struct nid_clock_info *v)
++{
++	const static uint32_t NUMA_ID_BASE = 1;
++	v->nid = numa_node_id() + NUMA_ID_BASE;
++	/* v->timestamp = get_cycles(); */
++}
++
++void cst_mutex_init(struct cst_mutex *lock)
++{
++	lock->nice = 0;
++	lock->serving_socket = NULL;
++	lock->gtail = NULL;
++	lock->ngid_vec = 0;
++	lock->numa_list.head.next = &lock->numa_list.head;
++}
++EXPORT_SYMBOL(cst_mutex_init);
++
++static inline void list_add_unsafe(struct atomic_list_head *new,
++				   struct atomic_list_head *head)
++{
++	volatile struct atomic_list_head *old;
++
++	/* there can be concurrent enqueuers */
++	new->next = head->next;
++	old = smp_swap(&head->next, new);
++	new->next = old;
++	smp_wmb();
++}
++
++static inline int try_acquire_global(struct cst_mutex *lock, struct mutex_snode *snode)
++{
++	snode->gnext = NULL;
++	snode->status = STATE_PARKED;
++	smp_mb();
++
++	if (smp_cas(&lock->gtail, NULL, snode)) {
++		snode->status = STATE_LOCKED;
++		return 1;
++	}
++
++	return 0;
++}
++
++static inline int try_acquire_local(struct mutex_snode *snode)
++{
++	if (cmpxchg(&snode->qtail, NULL, (void *)&snode->qnext) == NULL)
++		return 1;
++	return 0;
++}
++
++static inline int cst_trylock(struct cst_mutex* lock)
++{
++	struct mutex_snode *snode;
++	int32_t nid;
++	struct nid_clock_info info;
++
++
++	numa_get_nid(&info);
++	nid = info.nid;
++	snode = get_snode(lock, nid);
++
++	preempt_disable();
++	if (!try_acquire_local(snode))
++		goto out;
++
++	if (snode->num_proc + 1 < NUMA_BATCH_SIZE) {
++		snode->num_proc++;
++		preempt_enable();
++		return 0;
++	}
++
++	/* Till here, it is successful, now trying to grab the global lock */
++	if(try_acquire_global(lock, snode)) {
++		preempt_enable();
++		return 0;
++	}
++
++	__cstmutex_local_unlock(snode);
++
++     out:
++	preempt_enable();
++	return 1;
++}
++
++static inline int try_acquire_global_lock(struct mutex_snode *snode)
++{
++	if (snode->status == STATE_LOCKED)
++		return true;
++	return false;
++}
++
++static inline void acquire_global(struct cst_mutex *lock, struct mutex_snode *snode)
++{
++	struct mutex_snode *old_snode;
++
++	snode->gnext = NULL;
++	snode->status = STATE_PARKED;
++	barrier();
++
++	old_snode = (struct mutex_snode *)smp_swap(&lock->gtail, snode);
++	if (!old_snode) {
++		snode->status = STATE_LOCKED;
++		return;
++	}
++
++	old_snode->gnext = snode;
++	do {
++		if (try_acquire_global_lock(snode))
++			break;
++		if (need_resched())
++			schedule_preempt_disabled();
++
++		cpu_relax();
++	} while(true);
++}
++
++static inline void __park_process(struct cst_mutex *lock, struct mutex_snode *snode,
++				  struct qnode *qnode, int state)
++{
++#if 0
++	smp_mb();
++	if (!(READ_ONCE(lock->serving_socket) == NULL ||
++	      lock->serving_socket == snode)) {
++		prepare_to_mswait_event(qnode->task, state);
++	}
++#endif
++	schedule_preempt_disabled();
++}
++
++static inline int acquire_local(struct cst_mutex *lock,
++				struct mutex_snode *snode, int state,
++				struct task_struct *task)
++{
++	struct qnode *old_qnode, *next_qnode;
++	struct qnode cur_qnode;
++	int allow_local_acquire = 0;
++
++	cur_qnode.status = WAIT;
++	cur_qnode.next = NULL;
++	cur_qnode.task = task;
++
++	old_qnode = smp_swap(&snode->qtail, &cur_qnode);
++	if (old_qnode) {
++
++		barrier();
++		old_qnode->next = &cur_qnode;
++		barrier();
++
++		while(cur_qnode.status == WAIT) {
++			if (need_resched())
++				__park_process(lock, snode, &cur_qnode, state);
++			cpu_relax();
++		}
++		if (cur_qnode.status < ACQUIRE_PARENT)
++			allow_local_acquire = 1;
++	}
++
++	next_qnode = cur_qnode.next;
++	if (!next_qnode) {
++		barrier();
++		snode->qnext = NULL;
++		if (cmpxchg(&snode->qtail, &cur_qnode,
++			    (void *)&snode->qnext) != &cur_qnode) {
++
++			while(!cur_qnode.next)
++				smp_rmb();
++			snode->qnext = cur_qnode.next;
++		}
++	} else
++		snode->qnext = next_qnode;
++
++	/* mswake_up(cur_qnode.next); */
++
++	if (allow_local_acquire)
++		goto out;
++
++	barrier();
++	acquire_global(lock, snode);
++	lock->serving_socket = snode;
++
++     out:
++	return 0;
++}
++
++static inline int cstlock_acquire(struct cst_mutex* lock, int state)
++{
++	struct nid_clock_info info;
++	struct mutex_snode *snode;
++	struct task_struct *task;
++	int32_t nid;
++
++	preempt_disable();
++	numa_get_nid(&info);
++	nid = info.nid;
++	snode = get_snode(lock, nid);
++
++	/* currently, need to get the ticket */
++	task = current;
++	acquire_local(lock, snode, state, task);
++
++	preempt_enable();
++	return 0;
++}
++
++
++static inline void __cstmutex_global_unlock(struct cst_mutex *lock, struct mutex_snode *snode)
++{
++	if (!snode->gnext) {
++		if (smp_cas(&lock->gtail, snode, NULL))
++			return;
++
++		while(!snode->gnext)
++			smp_rmb();
++	}
++	snode->gnext->status = STATE_LOCKED;
++	/* mswake_up(snode->qnext); */
++	smp_wmb();
++}
++
++static inline void __cstmutex_local_unlock(struct mutex_snode *snode)
++{
++	struct qnode *next_qnode = snode->qnext;
++
++	barrier();
++	if (!next_qnode) {
++		if (cmpxchg(&snode->qtail, (void *)&snode->qnext, NULL) ==
++		    (void *)&snode->qnext)
++			return;
++
++		while(!snode->qnext)
++			smp_rmb();
++		next_qnode = snode->qnext;
++	}
++	next_qnode->status = ACQUIRE_PARENT;
++	smp_wmb();
++}
++
++static inline void cstlock_release(struct cst_mutex* lock)
++{
++	struct mutex_snode *snode;
++	struct qnode *next_qnode;
++	uint64_t cur_count;
++
++	preempt_disable();
++	snode = lock->serving_socket;
++
++	cur_count = ++snode->num_proc;
++	if(cur_count == NUMA_BATCH_SIZE) {
++		__cstmutex_global_unlock(lock, snode);
++		__cstmutex_local_unlock(snode);
++		snode->num_proc = 0;
++		goto out;
++	}
++
++	next_qnode = snode->qnext;
++	if (next_qnode) {
++		/* mswake_up(next_qnode); */
++		next_qnode->status = cur_count;
++		goto out;
++	}
++
++	__cstmutex_global_unlock(lock, snode);
++	__cstmutex_local_unlock(snode);
++
++     out:
++	preempt_enable();
++}
++
++/*
++ * returns 1 if the mutex is locked, 0 if unlocked
++ */
++int cst_mutex_is_locked(struct cst_mutex *lock)
++{
++	struct mutex_snode *snode;
++	struct atomic_list_head *numa_entry;
++
++	snode = READ_ONCE(lock->serving_socket);
++
++	if (likely(snode)) {
++		numa_entry = (struct atomic_list_head *)lock->numa_list.head.next;
++		while(numa_entry) {
++			snode = container_of(numa_entry, struct mutex_snode, numa_node);
++			if (READ_ONCE(snode->qtail))
++				return 1;
++			numa_entry = (struct atomic_list_head *)numa_entry->next;
++		}
++	}
++	return 0;
++}
++EXPORT_SYMBOL(cst_mutex_is_locked);
++
++void cst_mutex_lock(struct cst_mutex *lock)
++{
++	might_sleep();
++	cstlock_acquire(lock, TASK_UNINTERRUPTIBLE);
++}
++EXPORT_SYMBOL(cst_mutex_lock);
++
++int cst_mutex_trylock(struct cst_mutex *lock)
++{
++	return cst_trylock(lock);
++}
++EXPORT_SYMBOL(cst_mutex_trylock);
++
++int __must_check cst_mutex_lock_interruptible(struct cst_mutex *lock)
++{
++	might_sleep();
++	return cstlock_acquire(lock, TASK_INTERRUPTIBLE);
++}
++EXPORT_SYMBOL(cst_mutex_lock_interruptible);
++
++int __must_check cst_mutex_lock_killable(struct cst_mutex *lock)
++{
++	might_sleep();
++	return cstlock_acquire(lock, TASK_KILLABLE);
++}
++EXPORT_SYMBOL(cst_mutex_lock_killable);
++
++void cst_mutex_unlock(struct cst_mutex *lock)
++{
++	cstlock_release(lock);
++}
++EXPORT_SYMBOL(cst_mutex_unlock);
++
++int cst_atomic_dec_and_mutex_lock(atomic_t *cnt, struct cst_mutex *lock)
++{
++	if (atomic_add_unless(cnt, -1, 1))
++		return 0;
++
++	cst_mutex_lock(lock);
++	if (!atomic_dec_and_test(cnt)) {
++		cst_mutex_unlock(lock);
++		return 0;
++	}
++	return 1;
++}
++EXPORT_SYMBOL(cst_atomic_dec_and_mutex_lock);
++
++
++void cst_mutex_destroy(struct cst_mutex *lock)
++{
++	struct mutex_snode *snode;
++	struct atomic_list_head *numa_entry, *tmp;
++
++	numa_entry = (struct atomic_list_head *)lock->numa_list.head.next;
++	while (numa_entry && numa_entry != &lock->numa_list.head) {
++		snode = container_of(numa_entry, struct mutex_snode, numa_node);
++		tmp = (struct atomic_list_head *)numa_entry->next;
++		kfree(snode);
++		numa_entry = tmp;
++	}
++	lock->numa_list.head.next = &lock->numa_list.head;
++}
++EXPORT_SYMBOL(cst_mutex_destroy);
++
++/* All the dark magic will be down the drain */
++static inline struct mutex_snode *get_snode(struct cst_mutex *lock, uint16_t nid)
++{
++	struct mutex_snode *snode, *tmp_snode;
++	uint16_t gid;
++
++     retry_snode:
++	/* short cut for serving_socket */
++	tmp_snode = smp_load_acquire(&lock->serving_socket);
++	if (tmp_snode && tmp_snode->nid == nid) {
++		return tmp_snode;
++	}
++
++	/* get snode */
++	gid = numa_get_gid(lock->ngid_vec, nid);
++	/* This is where the read CS begins */
++	/* check whether the list is in use or not */
++	if (numa_gid_not_empty(gid)) {
++		/* snode may be already existing, let's get it */
++		snode = find_snode(lock, nid);
++	} else {
++		snode = add_snode(lock, nid, gid);
++	}
++	/*
++	 * even though gid was existing, but snode has not been created,
++	 * someone else is doing it for us
++	 */
++	if (!snode) {
++		goto retry_snode;
++	}
++	return snode;
++}
++
++static inline uint16_t numa_get_gid(uint64_t ngid_vec, uint16_t nid)
++{
++	uint64_t nid_mask = NUMA_NID_MASK(nid);
++	uint16_t gid_value = (ngid_vec & nid_mask) >> NUMA_GID_SHIFT(nid);
++	return gid_value;
++}
++
++static inline uint64_t  numa_set_gid(uint64_t ngid_vec,
++				     uint16_t nid, uint16_t gid)
++{
++	uint64_t nid_mask = NUMA_NID_MASK(nid);
++	uint64_t gid_mask = NUMA_GID_MASK(nid, gid);
++	return (ngid_vec & ~nid_mask) | gid_mask;
++}
++
++/**
++ * init of snode
++ */
++static inline struct mutex_snode *find_snode(struct cst_mutex *lock, uint16_t nid)
++{
++	struct mutex_snode *snode;
++	struct atomic_list_head *numa_entry;
++
++	/* check whether it belongs to the serving snode */
++	snode = lock->serving_socket;
++	if (snode && snode->nid == nid) {
++		return snode;
++	}
++
++	numa_entry = (struct atomic_list_head *)lock->numa_list.head.next;
++	while (numa_entry) {
++		snode = container_of(numa_entry, struct mutex_snode, numa_node);
++		if (snode->nid == nid) {
++			return snode;
++		}
++		numa_entry = (struct atomic_list_head *)numa_entry->next;
++	}
++	return NULL;
++}
++
++static inline struct mutex_snode *add_snode(struct cst_mutex *lock, uint16_t nid,
++				      uint16_t gid)
++{
++	uint64_t old_ngid_vec;
++	uint64_t new_ngid_vec;
++	uint16_t new_gid;
++	struct mutex_snode *snode = NULL;
++
++	/*
++	 * XXX: I can simplify this one to have 64 bit vector to get the snode.
++	 * BUT, I will keep it if we go for the cst global memory allocator
++	 * for the kernel. If we don't then can be easily changed.
++	 */
++
++	new_gid = numa_gid_inc(gid) | 0x1;
++	do {
++		/* prepare new_ngid_vec */
++		old_ngid_vec = lock->ngid_vec;
++		new_ngid_vec = numa_set_gid(old_ngid_vec, nid, new_gid);
++
++		/*
++		 * do another check again since, it is possible that somehow
++		 * someone might have obtained the same gid
++		 */
++		if (old_ngid_vec == new_ngid_vec) {
++			return find_snode(lock, nid);
++		}
++
++		/* try to atomically update ngid_vec using cas */
++		if (lock->ngid_vec == old_ngid_vec &&
++		    smp_cas(&lock->ngid_vec, old_ngid_vec, new_ngid_vec)) {
++			/* succeeded in updating ngid_vec
++			 * meaning that this thread is a winner
++			 * even if there was contention on updating ngid_vec */
++			break;
++		} else  {
++			/*
++			 * this thread is a looser in updating ngid_vec
++			 * there are two cases:
++			 */
++
++			/**
++			 * 1) if snode for nid is added by other thread,
++			 *    go back to the beginning of the lock code
++			 */
++			if (numa_gid_not_empty(numa_get_gid(lock->ngid_vec, nid))) {
++				return find_snode(lock, nid);
++			}
++
++			/**
++			 * 2) otherwise snode for other nid is added,
++			 *    retry to add_snode() for this nid
++			 */
++		}
++	} while (1);
++
++	/*
++	 * This thread succeeded in updating gid for nid.
++	 * The gid for this nid is marked as not-empty.
++	 * This thread has the responsibility of actually allocating
++	 * snode and inserting it into the numa_list. Until it is done,
++	 * all other threads for the same nid will be spinning
++	 * in the retry loop of mutex_lock().
++	 */
++	snode = alloc_snode(lock, (int32_t)nid);
++	snode->nid = nid;
++
++	/* add the new snode to the list */
++	//preempt_disable();
++	list_add_unsafe(&snode->numa_node, &lock->numa_list.head);
++	//preempt_enable();
++	return snode;
++}
++
++static inline struct mutex_snode *alloc_snode(struct cst_mutex *lock, int32_t nid)
++{
++	struct mutex_snode *snode;
++
++	snode = malloc_at_numa_node(sizeof(*snode), nid);
++	snode->gnext = NULL;
++	snode->numa_node.next = NULL;
++	snode->status = STATE_PARKED;
++	snode->qnext = NULL;
++	snode->qtail = NULL;
++	snode->num_proc = 0;
++	return snode;
++}
++
++/**
++ * allocation / deallocation of snode
++ */
++static inline void *malloc_at_numa_node(size_t size, int32_t nid)
++{
++	void *node;
++
++	node = kmalloc_node(size, GFP_ATOMIC, nid - 1);
++	return node;
++}
+diff --git a/kernel/locking/mutex_cstmcsvar.h b/kernel/locking/mutex_cstmcsvar.h
+new file mode 100644
+index 0000000..6bf9d01
+--- /dev/null
++++ b/kernel/locking/mutex_cstmcsvar.h
+@@ -0,0 +1,58 @@
++#ifndef _MUTEX_CST_H_
++#define _MUTEX_CST_H_
++
++/**
++ * Timestamp + cpu and numa node info that we can get with rdtscp()
++ */
++struct nid_clock_info {
++        uint32_t nid;
++        uint64_t timestamp;
++};
++
++#define INIT_ATOMIC_LIST_HEAD(ptr)                                             \
++        do {                                                                   \
++                (ptr)->next = (ptr);                                           \
++        } while(0)
++
++
++/**
++ * mutex structure
++ */
++/* associated spin time during the traversal */
++#define DEFAULT_SPIN_TIME          (1 << 15) /* max cost to put back to rq */
++#define DEFAULT_HOLDER_SPIN_TIME   (DEFAULT_SPIN_TIME)
++#define DEFAULT_WAITER_SPIN_TIME   (DEFAULT_SPIN_TIME)
++#define DEFAULT_WAITER_WAKEUP_TIME (DEFAULT_SPIN_TIME)
++/* This is an approximation */
++#define CYCLES_TO_COUNTERS(v)      (v / (1U << 4))
++
++#define NUMA_GID_BITS               (4)  /* even = empty, odd = not empty */
++#define NUMA_GID_SHIFT(_n)          ((_n) * NUMA_GID_BITS)
++#define NUMA_MAX_DOMAINS            (64 / NUMA_GEN_ID_BITS)
++#define NUMA_NID_MASK(_n)           ((0xF) << NUMA_GID_SHIFT(_n))
++#define NUMA_GID_MASK(_n, _g)       (((_g) & (0xF)) << NUMA_GID_SHIFT(_n))
++#define numa_gid_inc(_gid)          (((_gid) & ~0x1) + 2)
++#define numa_gid_not_empty(_gid)    ((_gid) & 0x1)
++
++#define NUMA_BATCH_SIZE             (128) /* per numa throughput */
++#define NUMA_WAITING_SPINNERS       (4) /* spinners in the waiter spin phase */
++
++/* lock status */
++#define STATE_PARKED (0)
++#define STATE_LOCKED (1)
++
++#define FIRST_ELEM 	1
++#define WAIT 		(1ULL << 31)
++#define ACQUIRE_PARENT 	((WAIT) - 1)
++
++/* this will be around 8 milliseconds which is huge!!! */
++#define MAX_SPIN_THRESHOLD          (1U << 20)
++/* this is the cost of a getpriority syscall. */
++#define MIN_SPIN_THRESHOLD          (1U << 7)
++
++#define smp_swap(ptr, v)        xchg((ptr), (v))
++#define smp_faa(ptr, inc)       xadd((ptr), (inc))
++#define smp_cas(ptr, old, new)  (cmpxchg((ptr), (old), (new)) == (old))
++
++
++#endif /* _MUTEX_CST_H_ */
+diff --git a/kernel/locking/qspinlock.c b/kernel/locking/qspinlock.c
+index bfaeb05..b822969 100644
+--- a/kernel/locking/qspinlock.c
++++ b/kernel/locking/qspinlock.c
+@@ -299,11 +299,11 @@ void queued_spin_lock_slowpath(struct qspinlock *lock, u32 val)
+ 
+ 	BUILD_BUG_ON(CONFIG_NR_CPUS >= (1U << _Q_TAIL_CPU_BITS));
+ 
+-	if (pv_enabled())
+-		goto pv_queue;
++	/* if (pv_enabled()) */
++	/* 	goto pv_queue; */
+ 
+-	if (virt_spin_lock(lock))
+-		return;
++	/* if (virt_spin_lock(lock)) */
++	/* 	return; */
+ 
+ 	/*
+ 	 * Wait for in-progress pending->locked hand-overs with a bounded
+diff --git a/kernel/locking/rwsem_cst.c b/kernel/locking/rwsem_cst.c
+new file mode 100644
+index 0000000..e717b33
+--- /dev/null
++++ b/kernel/locking/rwsem_cst.c
+@@ -0,0 +1,932 @@
++/*
++ * kernel/rwsem_cst.c: R/W semaphores, public implementation
++ *
++ * Developed by Sanidhya & Changwoo
++ *
++ * Copyright (C) 2016   Sanidhya Kashyap    <sanidhya@gatech.edu>,
++ *                      Changwoo Min        <changwoo@gatech.edu>
++ */
++
++#include <linux/types.h>
++#include <linux/kernel.h>
++#include <linux/sched.h>
++#include <linux/export.h>
++#include <linux/rwsem_cst.h>
++#include <linux/atomic.h>
++#include <linux/slab.h>
++
++#include "rwsem_cst.h"
++
++/*
++ * Nice levels are multiplicative, with a gentle 10% change for every
++ * nice level changed. I.e. when a CPU-bound task goes from nice 0 to
++ * nice 1, it will get ~10% less CPU time than another CPU-bound task
++ * that remained on nice 0.
++ *
++ * The "10% effect" is relative and cumulative: from _any_ nice level,
++ * if you go up 1 level, it's -10% CPU usage, if you go down 1 level
++ * it's +10% CPU usage. (to achieve that we use a multiplier of 1.25.
++ * If a task goes up by ~10% and another task goes down by ~10% then
++ * the relative distance between them is ~25%.)
++ *
++ * We will use this table to set the value of
++ * task->se.upgrade_sched_policy_quota as the difference of two nice
++ * values and will allow the schedule code to directly handle it.
++ */
++const int sched_prio_to_sched_count[40] = {
++ /* -20 */     1,     1,     1,     1,     2,
++ /* -15 */     2,     2,     3,     3,     4,
++ /* -10 */     4,     5,     6,     7,     8,
++ /*  -5 */     9,     10,    11,    12,    13,
++ /*   0 */     14,    15,    17,    19,    21,
++ /*   5 */     23,    25,    28,    31,    34,
++ /*  10 */     37,    41,    45,    50,    55,
++ /*  15 */     61,    67,    74,    81,    90,
++};
++
++/*
++ * Declarations
++ */
++static inline uint16_t numa_get_gid(uint64_t ngid_vec, uint16_t nid);
++
++static inline struct rw_snode *get_snode(struct rwcst_semaphore *lock, uint16_t nid);
++static inline struct rw_snode *find_snode(struct rwcst_semaphore *lock, uint16_t nid);
++static inline struct rw_snode *add_snode(struct rwcst_semaphore *lock, uint16_t nid,
++					 uint16_t gid);
++static inline struct rw_snode *alloc_snode(struct rwcst_semaphore *lock, int32_t nid);
++
++static inline void *malloc_at_numa_node(size_t size, int32_t nid);
++
++static inline void cst_write_local_unlock(struct rw_snode *snode);
++
++static inline int handle_other_socket_waiters(struct rwcst_semaphore *lock,
++					      struct rw_snode *snode,
++					      struct qnode *qnode, int state);
++static inline int handle_serving_socket_waiters(struct rwcst_semaphore *lock,
++						struct rw_snode *snode,
++						struct qnode *qnode, int state);
++
++static void __always_inline numa_get_nid(struct nid_clock_info *v)
++{
++	const static uint32_t NUMA_ID_BASE = 1;
++	v->nid = numa_node_id() + NUMA_ID_BASE;
++}
++
++static inline void list_add_unsafe(struct atomic_list_head *new,
++				   struct atomic_list_head *head)
++{
++	struct atomic_list_head *old;
++
++	/* there can be concurrent enqueuers */
++	new->next = head->next;
++	old = smp_swap(&head->next, new);
++	new->next = old;
++	smp_wmb();
++}
++
++static inline int try_acquire_global(struct rwcst_semaphore *lock,
++				     struct rw_snode *snode)
++{
++	snode->gnext = NULL;
++	snode->status = STATE_PARKED;
++	/* smp_mb(); */
++
++	if (smp_cas(&lock->gtail, NULL, snode)) {
++		smp_store_release(&snode->status, STATE_LOCKED);
++		return 1;
++	}
++
++	return 0;
++}
++
++static inline int try_acquire_local(struct rw_snode *snode)
++{
++	if (cmpxchg(&snode->qtail, NULL, (void *)&snode->qnext) == NULL)
++		return 1;
++	return 0;
++}
++
++static inline int cst_write_trylock(struct rwcst_semaphore* lock)
++{
++	struct rw_snode *snode;
++	int32_t nid;
++	struct nid_clock_info info;
++	int ret = 0;
++
++	preempt_disable();
++
++	numa_get_nid(&info);
++	nid = info.nid;
++	snode = find_snode(lock, nid);
++	if (snode == NULL)
++		goto out;
++
++	if (!try_acquire_local(snode))
++		goto out;
++
++	/* Till here, it is successful, now trying to grab the global lock */
++	if(try_acquire_global(lock, snode)) {
++		increase_task_pin_count();
++		ret = 1;
++		goto out;
++	}
++
++	cst_write_local_unlock(snode);
++
++     out:
++	preempt_enable();
++	return ret;
++}
++
++static inline void acquire_global(struct rwcst_semaphore *lock,
++				  struct rw_snode *snode)
++{
++	struct rw_snode *old_snode;
++	snode->kick_qnode = 0;
++	snode->gnext = NULL;
++	snode->status = STATE_PARKED;
++
++	old_snode = smp_swap(&lock->gtail, snode);
++	if (!old_snode) {
++		smp_store_release(&snode->status, STATE_LOCKED);
++		return;
++	}
++
++	barrier();
++	old_snode->gnext = snode;
++	smp_rmb();
++	while(snode->status == STATE_PARKED) {
++		if (need_resched())
++			schedule_preempt_disabled();
++		cpu_relax();
++	}
++}
++
++static inline int park_process(struct rwcst_semaphore *lock,
++				struct rw_snode *snode,
++				struct qnode *qnode, int state)
++{
++	/* TODO: handle signals!
++	if (unlikely(signal_pending_state(state, task))) {
++		return -EINTR;
++	} */
++	schedule_preempt_disabled();
++     retry:
++	if (READ_ONCE(lock->serving_socket) == snode) {
++		if (qnode->status != WAIT)
++			return QNODE_SLOCK_ACQUIRED;
++		else {
++			/* if (qnode->next) */
++			/* 	mswake_up(qnode->next); */
++			return NOT_SERVING_SOCKET_TO_SERVING_SOCKET;
++		}
++	}
++
++	/* time to park the thread */
++	/* prepare_to_mswait(qnode, state); */
++	schedule_preempt_disabled();
++	/*
++	 * Someone woke me up and now, I should check whether I
++	 * am a socket leader or not in the next snode
++	 */
++	if (lock->serving_socket->gnext == snode)
++		return handle_other_socket_waiters(lock, snode, qnode, state);
++	goto retry;
++}
++
++/*
++ * This function handles those cases in which the lock->serving_socket = snode.
++ * In this case, we prefer to spin or yield to the lock holder/very next waiter
++ */
++static inline int handle_serving_socket_waiters(struct rwcst_semaphore *lock,
++						struct rw_snode *snode,
++						struct qnode *qnode, int state)
++{
++	while (qnode->status == WAIT) {
++		if (need_resched()) {
++			if (unlikely(READ_ONCE(lock->serving_socket) != snode))
++				return SERVING_SOCKET_TO_NOT_SERVING_SOCKET;
++			schedule_preempt_disabled();
++		}
++		cpu_relax();
++	}
++	return QNODE_SLOCK_ACQUIRED;
++}
++
++/*
++ * This function is for the case in which the snode is not the working one.
++ * In this case, let's sleep
++ */
++static inline int handle_other_socket_waiters(struct rwcst_semaphore *lock,
++					      struct rw_snode *snode,
++					      struct qnode *qnode, int state)
++{
++	while (qnode->status == WAIT) {
++		if (READ_ONCE(lock->serving_socket) == snode)
++			return NOT_SERVING_SOCKET_TO_SERVING_SOCKET;
++
++		/* if (lock->serving_socket->gnext == snode) */
++		/* 	mswake_up(snode->qnext); */
++
++		if (need_resched()) {
++			return park_process(lock, snode, qnode, state);
++		}
++		cpu_relax();
++
++	}
++	return QNODE_SLOCK_ACQUIRED;
++}
++
++/*
++ * This is for handling the case when the lock->serving_socket is NULL
++ */
++static inline int handle_null_serving_socket(struct rwcst_semaphore *lock,
++					     struct rw_snode *snode,
++					     struct qnode *qnode, int state)
++{
++	/*
++	 * This will happen for a very brief moment, so bear with it
++	 */
++	if (lock->serving_socket != NULL)
++		goto out;
++	else
++		while (READ_ONCE(lock->serving_socket) == NULL)
++			cpu_relax();
++     out:
++	return (lock->serving_socket == snode)?
++		handle_serving_socket_waiters(lock, snode, qnode, state):
++		handle_other_socket_waiters(lock, snode, qnode, state);
++}
++
++static inline int acquire_local(struct rwcst_semaphore *lock,
++				struct rw_snode *snode, int state,
++				struct task_struct *task)
++{
++	struct qnode *old_qnode, *next_qnode;
++	struct qnode cur_qnode;
++	int allow_local_acquire = 0;
++	int ret;
++
++	cur_qnode.status = WAIT;
++	cur_qnode.next = NULL;
++	cur_qnode.parked = false;
++
++	old_qnode = smp_swap(&snode->qtail, &cur_qnode);
++	if (old_qnode) {
++
++		barrier();
++		old_qnode->next = &cur_qnode;
++		barrier();
++
++		cur_qnode.task = task;
++		ret = handle_null_serving_socket(lock, snode,
++						 &cur_qnode, state);
++	     retry:
++		switch (ret) {
++		case QNODE_SLOCK_ACQUIRED:
++			goto snode_leader;
++		case SERVING_SOCKET_TO_NOT_SERVING_SOCKET:
++			ret = handle_other_socket_waiters(lock, snode,
++							  &cur_qnode, state);
++			goto retry;
++		case NOT_SERVING_SOCKET_TO_SERVING_SOCKET:
++			ret = handle_serving_socket_waiters(lock, snode,
++							    &cur_qnode, state);
++			goto retry;
++		}
++
++#if 0
++		while(cur_qnode.status == WAIT) {
++			if (need_resched())
++				park_process(lock, snode, &cur_qnode, state);
++			cpu_relax();
++		}
++#endif
++	     snode_leader:
++		if (cur_qnode.status < ACQUIRE_PARENT)
++			allow_local_acquire = 1;
++	}
++
++	next_qnode = cur_qnode.next;
++	if (!next_qnode) {
++		barrier();
++		snode->qnext = NULL;
++		if (cmpxchg(&snode->qtail, &cur_qnode,
++			    (void *)&snode->qnext) != &cur_qnode) {
++
++			while(!READ_ONCE(cur_qnode.next))
++				cpu_relax();
++			snode->qnext = cur_qnode.next;
++		}
++	} else
++		snode->qnext = next_qnode;
++
++	if (allow_local_acquire)
++		goto out;
++
++	barrier();
++	acquire_global(lock, snode);
++	smp_store_release(&lock->serving_socket, snode);
++
++     out:
++	return 0;
++}
++
++static inline int cstlock_acquire(struct rwcst_semaphore* lock, int state)
++{
++	struct nid_clock_info info;
++	struct rw_snode *snode;
++	struct task_struct *task;
++	int32_t nid;
++	cpumask_t core_cpumask;
++
++	preempt_disable();
++	numa_get_nid(&info);
++	nid = info.nid;
++	snode = get_snode(lock, nid);
++
++	/* currently, need to get the ticket */
++	task = current;
++	increase_task_pin_count();
++	if (cpumask_empty(&task->holding_cpus_allowed)) {
++		task->holding_cpus_allowed = task->cpus_allowed;
++		cpumask_set_cpu(smp_processor_id(), &core_cpumask);
++		set_cpus_allowed_ptr(task, &core_cpumask);
++	}
++	acquire_local(lock, snode, state, task);
++
++	preempt_enable();
++	return 0;
++}
++
++
++static inline void cst_write_global_unlock(struct rwcst_semaphore *lock, struct rw_snode *snode)
++{
++	if (!snode->gnext) {
++		if (smp_cas(&lock->gtail, snode, NULL))
++			return;
++
++		while(!READ_ONCE(snode->gnext))
++			cpu_relax();
++	}
++	smp_store_release(&snode->gnext->status, STATE_LOCKED);
++	/* now the tasks should be woken up, whoever is queued */
++	/* mswake_up_all(snode->gnext->qnext); */
++	/*
++	 * This one will try to wake up at least two tasks and then waiters will
++	 * themselves wake up others whoever are in the queue one by one
++	 */
++	/* mswake_up_n_tasks(snode->gnext->qnext, 2); */
++}
++
++static inline void cst_write_local_unlock(struct rw_snode *snode)
++{
++	struct qnode *next_qnode = snode->qnext;
++
++	barrier();
++	if (!next_qnode) {
++		if (cmpxchg(&snode->qtail, (void *)&snode->qnext, NULL) ==
++		    (void *)&snode->qnext)
++			return;
++
++		while(!READ_ONCE(snode->qnext))
++			cpu_relax();
++		next_qnode = snode->qnext;
++	}
++	next_qnode->status = ACQUIRE_PARENT;
++	smp_wmb();
++}
++
++static inline void cstlock_release(struct rwcst_semaphore *lock, bool dec_cnt)
++{
++	struct rw_snode *snode;
++	struct qnode *next_qnode;
++	uint64_t cur_count;
++
++	preempt_disable();
++	/* does not require any barrier since this should be the same core
++	 * that is going to handle the lock release (hopefully) */
++	snode = lock->serving_socket;
++
++	cur_count = ++snode->num_proc;
++	if(cur_count == NUMA_BATCH_SIZE) {
++		cst_write_global_unlock(lock, snode);
++		cst_write_local_unlock(snode);
++		snode->num_proc = 0;
++		goto out;
++	}
++
++	next_qnode = snode->qnext;
++	if (next_qnode) {
++		next_qnode->status = cur_count;
++		/*
++		 * There is a possibility that the very next snode which
++		 * will acquire the global lock, might have it's qnode
++		 * asleep. Let's poke the guy and bring it back from
++		 * the hibernation
++		 * Optimization: Earlier code used to keep on kicking
++		 * the task, thereby wasting the CPU cycles. Now, we
++		 * will only kick the CPU only once.
++		 */
++		if (snode->gnext && !snode->kick_qnode) {
++			struct qnode *q = READ_ONCE(snode->gnext->qnext);
++			/* if (mswake_up(q)) */
++			/* 	snode->kick_qnode = 1; */
++		}
++#if 0
++		if (snode->gnext)
++			mswake_up(snode->gnext->qnext);
++#endif
++
++		goto out;
++	}
++
++	cst_write_global_unlock(lock, snode);
++	cst_write_local_unlock(snode);
++
++     out:
++	decrease_task_pin_count(dec_cnt);
++	preempt_enable();
++}
++
++static inline void check_reader_count(struct rwcst_semaphore *sem,
++				      struct rw_snode *snode, int reader_count)
++{
++#if 0
++	struct atomic_list_head *pos;
++
++	if (reader_count > 0)
++		return;
++
++	/* since, we did a wrong count, therefore, we should increase it back */
++	smp_faa(&snode->active_readers, 1);
++
++	/*
++	 * Now, this is the tricky part.
++	 * What has happened is that the task was misplaced by the stupid CFS
++	 * and now, we have to find the right snode where we can decrease the
++	 * value and someone else will take care for us eventually
++	 */
++     retry:
++	for_each_snode(pos, &sem->numa_list.head) {
++		snode = container_of(pos, struct rw_snode, numa_node);
++		reader_count = READ_ONCE(snode->active_readers);
++		if (reader_count > 0 &&
++		    smp_cas(&snode->active_readers,
++			    reader_count, reader_count - 1))
++			return;
++		if (need_resched())
++			schedule_preempt_disabled();
++	}
++	goto retry;
++#endif
++}
++
++/*
++ * lock for reading
++ */
++static inline void down_read_cst_snode(struct rwcst_semaphore *sem,
++				       struct rw_snode *snode)
++{
++	int reader_count;
++	while(true) {
++		while (READ_ONCE(sem->gtail)) {
++			if (need_resched())
++				schedule_preempt_disabled();
++			cpu_relax();
++		}
++		smp_faa(&snode->active_readers, 1);
++		if (READ_ONCE(sem->gtail)) {
++			reader_count = smp_faa(&snode->active_readers, -1);
++			check_reader_count(sem, snode, reader_count);
++			if (need_resched())
++				schedule_preempt_disabled();
++			continue;
++		}
++		break;
++	}
++}
++
++void down_read_cst(struct rwcst_semaphore *sem)
++{
++	struct rw_snode *snode;
++	struct nid_clock_info info;
++	cpumask_t core_cpumask;
++	struct task_struct *task;
++
++	might_sleep();
++
++	preempt_disable();
++	numa_get_nid(&info);
++	task = current;
++	if (cpumask_empty(&task->holding_cpus_allowed)) {
++		task->holding_cpus_allowed = task->cpus_allowed;
++		cpumask_set_cpu(smp_processor_id(), &core_cpumask);
++		set_cpus_allowed_ptr(task, &core_cpumask);
++	}
++	increase_task_pin_count();
++	snode = get_snode(sem, info.nid);
++	down_read_cst_snode(sem, snode);
++	preempt_enable();
++}
++EXPORT_SYMBOL(down_read_cst);
++
++/*
++ * trylock for reading -- returns 1 if successful, 0 if contention
++ */
++int down_read_cst_trylock(struct rwcst_semaphore *sem)
++{
++	struct rw_snode *snode;
++	struct nid_clock_info info;
++	int reader_count;
++	cpumask_t core_cpumask;
++	struct task_struct *task;
++
++	/* Here I can remove the READ_ONCE, but what it will
++	 * do is that it go ahead thereby wasting time.
++	 * I don't know how much does it really affect if I remove
++	 * this one.
++	 * Still going to take the chance :-).
++	 */
++	/* if (READ_ONCE(sem->gtail) != NULL) */
++	if (sem->gtail != NULL)
++		goto out;
++
++	preempt_disable();
++	numa_get_nid(&info);
++	snode = find_snode(sem, info.nid);
++	if (snode == NULL)
++		goto preempt_out;
++
++	smp_faa(&snode->active_readers, 1);
++	/*
++	 * This one is SUPER CRITICAL.
++	 */
++	if (READ_ONCE(sem->gtail) != NULL) {
++		reader_count = smp_faa(&snode->active_readers, -1);
++		check_reader_count(sem, snode, reader_count);
++		goto preempt_out;
++	}
++
++	task = current;
++	if (cpumask_empty(&task->holding_cpus_allowed)) {
++		task->holding_cpus_allowed = task->cpus_allowed;
++		cpumask_set_cpu(smp_processor_id(), &core_cpumask);
++		set_cpus_allowed_ptr(task, &core_cpumask);
++	}
++	increase_task_pin_count();
++	preempt_enable();
++	return 1;
++
++     preempt_out:
++	preempt_enable();
++     out:
++	return 0;
++}
++EXPORT_SYMBOL(down_read_cst_trylock);
++
++static inline void check_active_readers(struct rwcst_semaphore *lock)
++{
++	struct rw_snode *snode = NULL;
++	struct atomic_list_head *pos;
++
++	preempt_disable();
++	for_each_snode(pos, &lock->numa_list.head) {
++		snode = container_of(pos, struct rw_snode, numa_node);
++		while (READ_ONCE(snode->active_readers)) {
++			if (need_resched())
++				schedule_preempt_disabled();
++			cpu_relax();
++		}
++	}
++	preempt_enable();
++}
++
++/*
++ * lock for writing
++ */
++void down_write_cst(struct rwcst_semaphore *sem)
++{
++	might_sleep();
++	cstlock_acquire(sem, TASK_UNINTERRUPTIBLE);
++	check_active_readers(sem);
++}
++EXPORT_SYMBOL(down_write_cst);
++
++/*
++ * lock for writing
++ */
++int down_write_cst_killable(struct rwcst_semaphore *sem)
++{
++	might_sleep();
++	cstlock_acquire(sem, TASK_KILLABLE);
++	check_active_readers(sem);
++	return 0;
++}
++EXPORT_SYMBOL(down_write_cst_killable);
++
++int down_read_cst_killable(struct rwcst_semaphore *sem)
++{
++	might_sleep();
++	down_read_cst(sem);
++	return 0;
++}
++EXPORT_SYMBOL(down_read_cst_killable);
++
++
++/*
++ * trylock for writing -- returns 1 if successful, 0 if contention
++ */
++int down_write_cst_trylock(struct rwcst_semaphore *sem)
++{
++	struct rw_snode *snode = NULL;
++	struct atomic_list_head *pos;
++	int ret;
++	int cpu;
++	cpumask_t core_cpumask;
++
++	ret = cst_write_trylock(sem);
++	if (!ret)
++		goto out;
++
++	for_each_snode(pos, &sem->numa_list.head) {
++		snode = container_of(pos, struct rw_snode, numa_node);
++		if (READ_ONCE(snode->active_readers) != 0) {
++			cstlock_release(sem, true);
++			return 0;
++		}
++	}
++
++	cpu = get_cpu();
++	if (cpumask_empty(&current->holding_cpus_allowed)) {
++		current->holding_cpus_allowed = current->cpus_allowed;
++		cpumask_set_cpu(cpu, &core_cpumask);
++		set_cpus_allowed_ptr(current, &core_cpumask);
++	}
++	put_cpu();
++     out:
++	return ret;
++}
++EXPORT_SYMBOL(down_write_cst_trylock);
++
++/*
++ * release a read lock
++ */
++void up_read_cst(struct rwcst_semaphore *sem)
++{
++	struct rw_snode *snode;
++	struct nid_clock_info info;
++	int reader_count;
++	int cpu;
++	cpumask_t core_cpumask;
++	struct task_struct *task;
++
++	numa_get_nid(&info);
++	task = current;
++	snode = get_snode(sem, info.nid);
++	reader_count = smp_faa(&snode->active_readers, -1);
++	check_reader_count(sem, snode, reader_count);
++	preempt_disable();
++	set_cpus_allowed_ptr(task, &task->holding_cpus_allowed);
++	preempt_enable();
++	cpumask_clear(&task->holding_cpus_allowed);
++
++	decrease_task_pin_count(true);
++
++}
++EXPORT_SYMBOL(up_read_cst);
++
++/*
++ * release a write lock
++ */
++void up_write_cst(struct rwcst_semaphore *sem)
++{
++	struct task_struct *task = current;
++	cstlock_release(sem, true);
++	preempt_disable();
++	set_cpus_allowed_ptr(task, &task->holding_cpus_allowed);
++	preempt_enable();
++	cpumask_clear(&task->holding_cpus_allowed);
++}
++EXPORT_SYMBOL(up_write_cst);
++
++/*
++ * downgrade write lock to read lock
++ */
++void downgrade_write_cst(struct rwcst_semaphore *sem)
++{
++	/* Same reason here since this is the same core that
++	 * is trying to downgrade the write to reader */
++	struct rw_snode *snode = sem->serving_socket;
++	cstlock_release(sem, false);
++	down_read_cst_snode(sem, snode);
++}
++EXPORT_SYMBOL(downgrade_write_cst);
++
++void __init_rwsem_cst(struct rwcst_semaphore *sem, const char *name,
++		      struct lock_class_key *key)
++{
++	sem->serving_socket = NULL;
++	sem->gtail = NULL;
++	sem->ngid_vec = 0;
++	sem->numa_list.head.next = &sem->numa_list.head;
++	smp_wmb();
++}
++EXPORT_SYMBOL(__init_rwsem_cst);
++
++void __deinit_rwsem_cst(struct rwcst_semaphore *sem)
++{
++	struct rw_snode *snode;
++	struct atomic_list_head *pos, *tmp;
++
++	for_each_snode_safe(pos, tmp, &sem->numa_list.head) {
++		snode = container_of(pos, struct rw_snode, numa_node);
++		kfree(snode);
++	}
++	sem->numa_list.head.next = &sem->numa_list.head;
++}
++EXPORT_SYMBOL(__deinit_rwsem_cst);
++
++/* All the dark magic will be down the drain */
++static inline struct rw_snode *get_snode(struct rwcst_semaphore *lock, uint16_t nid)
++{
++	struct rw_snode *snode, *tmp_snode;
++	uint16_t gid;
++
++     retry_snode:
++	/* short cut for serving_socket */
++	tmp_snode = smp_load_acquire(&lock->serving_socket);
++	if (tmp_snode && tmp_snode->nid == nid) {
++		return tmp_snode;
++	}
++
++	/* get snode */
++	gid = numa_get_gid(READ_ONCE(lock->ngid_vec), nid);
++	/* This is where the read CS begins */
++	/* check whether the list is in use or not */
++	if (numa_gid_not_empty(gid)) {
++		/* snode may be already existing, let's get it */
++		snode = find_snode(lock, nid);
++	} else {
++		snode = add_snode(lock, nid, gid);
++	}
++	/*
++	 * even though gid was existing, but snode has not been created,
++	 * someone else is doing it for us
++	 */
++	if (!snode) {
++		goto retry_snode;
++	}
++	return snode;
++}
++
++static inline uint16_t numa_get_gid(uint64_t ngid_vec, uint16_t nid)
++{
++	uint64_t nid_mask = NUMA_NID_MASK(nid);
++	uint16_t gid_value = (ngid_vec & nid_mask) >> NUMA_GID_SHIFT(nid);
++	return gid_value;
++}
++
++static inline uint64_t  numa_set_gid(uint64_t ngid_vec,
++				     uint16_t nid, uint16_t gid)
++{
++	uint64_t nid_mask = NUMA_NID_MASK(nid);
++	uint64_t gid_mask = NUMA_GID_MASK(nid, gid);
++	return (ngid_vec & ~nid_mask) | gid_mask;
++}
++
++/**
++ * init of snode
++ */
++static inline struct rw_snode *find_snode(struct rwcst_semaphore *lock, uint16_t nid)
++{
++	struct rw_snode *snode;
++	struct atomic_list_head *numa_entry;
++
++	/* check whether it belongs to the serving snode */
++	/* this is usually the fast path */
++	snode = lock->serving_socket;
++	if (snode && snode->nid == nid) {
++		return snode;
++	}
++
++	smp_rmb();
++	numa_entry = lock->numa_list.head.next;
++	while (numa_entry && numa_entry != &lock->numa_list.head) {
++		snode = container_of(numa_entry, struct rw_snode, numa_node);
++		if (snode->nid == nid) {
++			return snode;
++		}
++		/*
++		 * I really don't want to use the READ_ONCE
++		 * here as the only issue that we may see is that
++		 * the last numa_entry has not been updated.
++		 * But, I don't know how to solve this, so I will
++		 * stupidly use the READ_ONCE.
++		 * BUT, the READ_ONCE becomes important if we are
++		 * adding and removing the snode aka the memory management
++		 */
++		numa_entry = READ_ONCE(numa_entry->next);
++	}
++	return NULL;
++}
++
++static inline struct rw_snode *add_snode(struct rwcst_semaphore *lock, uint16_t nid,
++					 uint16_t gid)
++{
++	uint64_t old_ngid_vec;
++	uint64_t new_ngid_vec;
++	uint16_t new_gid;
++	struct rw_snode *snode = NULL;
++
++	/*
++	 * XXX: I can simplify this one to have 64 bit vector to get the snode.
++	 * BUT, I will keep it if we go for the cst global memory allocator
++	 * for the kernel. If we don't then can be easily changed.
++	 */
++
++	new_gid = numa_gid_inc(gid) | 0x1;
++	do {
++		/* prepare new_ngid_vec */
++		old_ngid_vec = READ_ONCE(lock->ngid_vec);
++		new_ngid_vec = numa_set_gid(old_ngid_vec, nid, new_gid);
++
++		/*
++		 * do another check again since, it is possible that somehow
++		 * someone might have obtained the same gid
++		 */
++		if (old_ngid_vec == new_ngid_vec) {
++			return find_snode(lock, nid);
++		}
++
++		/* try to atomically update ngid_vec using cas */
++		if (lock->ngid_vec == old_ngid_vec &&
++		    smp_cas(&lock->ngid_vec, old_ngid_vec, new_ngid_vec)) {
++			/* succeeded in updating ngid_vec
++			 * meaning that this thread is a winner
++			 * even if there was contention on updating ngid_vec */
++			break;
++		} else  {
++			/*
++			 * this thread is a looser in updating ngid_vec
++			 * there are two cases:
++			 */
++
++			/**
++			 * 1) if snode for nid is added by other thread,
++			 *    go back to the beginning of the lock code
++			 */
++			if (numa_gid_not_empty(numa_get_gid(READ_ONCE(lock->ngid_vec), nid))) {
++				return find_snode(lock, nid);
++			}
++
++			/**
++			 * 2) otherwise snode for other nid is added,
++			 *    retry to add_snode() for this nid
++			 */
++		}
++	} while (1);
++
++	/*
++	 * This thread succeeded in updating gid for nid.
++	 * The gid for this nid is marked as not-empty.
++	 * This thread has the responsibility of actually allocating
++	 * snode and inserting it into the numa_list. Until it is done,
++	 * all other threads for the same nid will be spinning
++	 * in the retry loop of mutex_lock().
++	 */
++	snode = alloc_snode(lock, (int32_t)nid);
++	snode->nid = nid;
++
++	/* add the new snode to the list */
++	list_add_unsafe(&snode->numa_node, &lock->numa_list.head);
++	return snode;
++}
++
++static inline struct rw_snode *alloc_snode(struct rwcst_semaphore *lock,
++					   int32_t nid)
++{
++	struct rw_snode *snode;
++
++	snode = malloc_at_numa_node(sizeof(*snode), nid);
++	snode->gnext = NULL;
++	snode->numa_node.next = NULL;
++	snode->status = STATE_PARKED;
++	snode->qnext = NULL;
++	snode->qtail = NULL;
++	snode->num_proc = 0;
++	snode->active_readers = 0;
++	init_waitqueue_head(&snode->queue);
++	return snode;
++}
++
++/**
++ * allocation / deallocation of snode
++ */
++static inline void *malloc_at_numa_node(size_t size, int32_t nid)
++{
++	void *node;
++
++	node = kmalloc_node(size, GFP_ATOMIC, nid - 1);
++	return node;
++}
+diff --git a/kernel/locking/rwsem_cst.h b/kernel/locking/rwsem_cst.h
+new file mode 100644
+index 0000000..be1c37a
+--- /dev/null
++++ b/kernel/locking/rwsem_cst.h
+@@ -0,0 +1,40 @@
++#ifndef _RWSEM_CST_H_
++#define _RWSEM_CST_H_
++#include "mutex_cstmcsvar.h"
++
++#ifdef CONFIG_NO_MIGRATION_IN_CS
++#define increase_task_pin_count() 					\
++	do {								\
++		++current->se.task_pin_count; 				\
++	} while (0)
++#define decrease_task_pin_count(_f) 					\
++	do {								\
++		if (_f)							\
++			--current->se.task_pin_count; 			\
++	} while (0)
++#define update_sched_priority(__max, task)				\
++	do {								\
++		task->se.upgrade_sched_policy_quota = 			\
++		sched_prio_to_sched_count[task_nice(task) + 20] - 	\
++		sched_prio_to_sched_count[__max + 20];			\
++	} while (0)
++#define reset_sched_priority(task) 					\
++	do {								\
++		task->se.upgrade_sched_policy_quota = 0;		\
++	} while (0)
++#else
++#define increase_task_pin_count() do { } while (0)
++#define decrease_task_pin_count(_f) do { } while (0)
++#define update_sched_priority(__max, task) do { } while (0)
++#define reset_sched_priority(task) do { } while (0)
++#endif
++
++/* this will acquire the lock */
++#define QNODE_SLOCK_ACQUIRED				1
++/* the quota of serving socket is over, if it's a leader
++ * then it will spin, else will go to sleep */
++#define SERVING_SOCKET_TO_NOT_SERVING_SOCKET 		2
++/* the new serving socket */
++#define NOT_SERVING_SOCKET_TO_SERVING_SOCKET 		3
++
++#endif /* _RWSEM_CST_H_ */
+diff --git a/kernel/sched/fair.c b/kernel/sched/fair.c
+index f808ddf..de33d38 100644
+--- a/kernel/sched/fair.c
++++ b/kernel/sched/fair.c
+@@ -2479,7 +2479,7 @@ void task_numa_work(struct callback_head *work)
+ 		return;
+ 
+ 
+-	if (!down_read_trylock(&mm->mmap_sem))
++	if (!down_read_cst_trylock(&mm->mmap_sem))
+ 		return;
+ 	vma = find_vma(mm, start);
+ 	if (!vma) {
+@@ -2547,7 +2547,7 @@ void task_numa_work(struct callback_head *work)
+ 		mm->numa_scan_offset = start;
+ 	else
+ 		reset_ptenuma_scan(p);
+-	up_read(&mm->mmap_sem);
++	up_read_cst(&mm->mmap_sem);
+ 
+ 	/*
+ 	 * Make sure tasks use at least 32x as much time to run other code
+diff --git a/kernel/sys.c b/kernel/sys.c
+index cf5c675..495113e 100644
+--- a/kernel/sys.c
++++ b/kernel/sys.c
+@@ -1851,7 +1851,7 @@ static int prctl_set_mm_exe_file(struct mm_struct *mm, unsigned int fd)
+ 	if (exe_file) {
+ 		struct vm_area_struct *vma;
+ 
+-		down_read(&mm->mmap_sem);
++		down_read_cst(&mm->mmap_sem);
+ 		for (vma = mm->mmap; vma; vma = vma->vm_next) {
+ 			if (!vma->vm_file)
+ 				continue;
+@@ -1860,7 +1860,7 @@ static int prctl_set_mm_exe_file(struct mm_struct *mm, unsigned int fd)
+ 				goto exit_err;
+ 		}
+ 
+-		up_read(&mm->mmap_sem);
++		up_read_cst(&mm->mmap_sem);
+ 		fput(exe_file);
+ 	}
+ 
+@@ -1874,7 +1874,7 @@ static int prctl_set_mm_exe_file(struct mm_struct *mm, unsigned int fd)
+ 	fdput(exe);
+ 	return err;
+ exit_err:
+-	up_read(&mm->mmap_sem);
++	up_read_cst(&mm->mmap_sem);
+ 	fput(exe_file);
+ 	goto exit;
+ }
+@@ -2017,7 +2017,7 @@ static int prctl_set_mm_map(int opt, const void __user *addr, unsigned long data
+ 	 * arg_lock protects concurent updates but we still need mmap_sem for
+ 	 * read to exclude races with sys_brk.
+ 	 */
+-	down_read(&mm->mmap_sem);
++	down_read_cst(&mm->mmap_sem);
+ 
+ 	/*
+ 	 * We don't validate if these members are pointing to
+@@ -2056,7 +2056,7 @@ static int prctl_set_mm_map(int opt, const void __user *addr, unsigned long data
+ 	if (prctl_map.auxv_size)
+ 		memcpy(mm->saved_auxv, user_auxv, sizeof(user_auxv));
+ 
+-	up_read(&mm->mmap_sem);
++	up_read_cst(&mm->mmap_sem);
+ 	return 0;
+ }
+ #endif /* CONFIG_CHECKPOINT_RESTORE */
+@@ -2123,7 +2123,7 @@ static int prctl_set_mm(int opt, unsigned long addr,
+ 
+ 	error = -EINVAL;
+ 
+-	down_write(&mm->mmap_sem);
++	down_write_cst(&mm->mmap_sem);
+ 	vma = find_vma(mm, addr);
+ 
+ 	prctl_map.start_code	= mm->start_code;
+@@ -2216,7 +2216,7 @@ static int prctl_set_mm(int opt, unsigned long addr,
+ 
+ 	error = 0;
+ out:
+-	up_write(&mm->mmap_sem);
++	up_write_cst(&mm->mmap_sem);
+ 	return error;
+ }
+ 
+@@ -2439,13 +2439,13 @@ SYSCALL_DEFINE5(prctl, int, option, unsigned long, arg2, unsigned long, arg3,
+ 	case PR_SET_THP_DISABLE:
+ 		if (arg3 || arg4 || arg5)
+ 			return -EINVAL;
+-		if (down_write_killable(&me->mm->mmap_sem))
++		if (down_write_cst_killable(&me->mm->mmap_sem))
+ 			return -EINTR;
+ 		if (arg2)
+ 			set_bit(MMF_DISABLE_THP, &me->mm->flags);
+ 		else
+ 			clear_bit(MMF_DISABLE_THP, &me->mm->flags);
+-		up_write(&me->mm->mmap_sem);
++		up_write_cst(&me->mm->mmap_sem);
+ 		break;
+ 	case PR_MPX_ENABLE_MANAGEMENT:
+ 		if (arg2 || arg3 || arg4 || arg5)
+diff --git a/kernel/trace/trace_output.c b/kernel/trace/trace_output.c
+index 6e6cc64..b0b5482 100644
+--- a/kernel/trace/trace_output.c
++++ b/kernel/trace/trace_output.c
+@@ -397,7 +397,7 @@ static int seq_print_user_ip(struct trace_seq *s, struct mm_struct *mm,
+ 	if (mm) {
+ 		const struct vm_area_struct *vma;
+ 
+-		down_read(&mm->mmap_sem);
++		down_read_cst(&mm->mmap_sem);
+ 		vma = find_vma(mm, ip);
+ 		if (vma) {
+ 			file = vma->vm_file;
+@@ -409,7 +409,7 @@ static int seq_print_user_ip(struct trace_seq *s, struct mm_struct *mm,
+ 				trace_seq_printf(s, "[+0x%lx]",
+ 						 ip - vmstart);
+ 		}
+-		up_read(&mm->mmap_sem);
++		up_read_cst(&mm->mmap_sem);
+ 	}
+ 	if (ret && ((sym_flags & TRACE_ITER_SYM_ADDR) || !file))
+ 		trace_seq_printf(s, " <" IP_FMT ">", ip);
+diff --git a/mm/filemap.c b/mm/filemap.c
+index 52517f2..1fcefbd5 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -1304,7 +1304,7 @@ int __lock_page_or_retry(struct page *page, struct mm_struct *mm,
+ 		if (flags & FAULT_FLAG_RETRY_NOWAIT)
+ 			return 0;
+ 
+-		up_read(&mm->mmap_sem);
++		up_read_cst(&mm->mmap_sem);
+ 		if (flags & FAULT_FLAG_KILLABLE)
+ 			wait_on_page_locked_killable(page);
+ 		else
+@@ -1316,7 +1316,7 @@ int __lock_page_or_retry(struct page *page, struct mm_struct *mm,
+ 
+ 			ret = __lock_page_killable(page);
+ 			if (ret) {
+-				up_read(&mm->mmap_sem);
++				up_read_cst(&mm->mmap_sem);
+ 				return 0;
+ 			}
+ 		} else
+diff --git a/mm/gup.c b/mm/gup.c
+index 1abc8b4..d2ee6f8 100644
+--- a/mm/gup.c
++++ b/mm/gup.c
+@@ -842,7 +842,7 @@ int fixup_user_fault(struct task_struct *tsk, struct mm_struct *mm,
+ 	}
+ 
+ 	if (ret & VM_FAULT_RETRY) {
+-		down_read(&mm->mmap_sem);
++		down_read_cst(&mm->mmap_sem);
+ 		if (!(fault_flags & FAULT_FLAG_TRIED)) {
+ 			*unlocked = true;
+ 			fault_flags &= ~FAULT_FLAG_ALLOW_RETRY;
+@@ -928,7 +928,7 @@ static __always_inline long __get_user_pages_locked(struct task_struct *tsk,
+ 		 */
+ 		*locked = 1;
+ 		lock_dropped = true;
+-		down_read(&mm->mmap_sem);
++		down_read_cst(&mm->mmap_sem);
+ 		ret = __get_user_pages(tsk, mm, start, 1, flags | FOLL_TRIED,
+ 				       pages, NULL, NULL);
+ 		if (ret != 1) {
+@@ -949,7 +949,7 @@ static __always_inline long __get_user_pages_locked(struct task_struct *tsk,
+ 		 * We must let the caller know we temporarily dropped the lock
+ 		 * and so the critical section protected by it was lost.
+ 		 */
+-		up_read(&mm->mmap_sem);
++		up_read_cst(&mm->mmap_sem);
+ 		*locked = 0;
+ 	}
+ 	return pages_done;
+@@ -962,19 +962,19 @@ static __always_inline long __get_user_pages_locked(struct task_struct *tsk,
+  *
+  * get_user_pages_locked() is suitable to replace the form:
+  *
+- *      down_read(&mm->mmap_sem);
++ *      down_read_cst(&mm->mmap_sem);
+  *      do_something()
+  *      get_user_pages(tsk, mm, ..., pages, NULL);
+- *      up_read(&mm->mmap_sem);
++ *      up_read_cst(&mm->mmap_sem);
+  *
+  *  to:
+  *
+  *      int locked = 1;
+- *      down_read(&mm->mmap_sem);
++ *      down_read_cst(&mm->mmap_sem);
+  *      do_something()
+  *      get_user_pages_locked(tsk, mm, ..., pages, &locked);
+  *      if (locked)
+- *          up_read(&mm->mmap_sem);
++ *          up_read_cst(&mm->mmap_sem);
+  */
+ long get_user_pages_locked(unsigned long start, unsigned long nr_pages,
+ 			   unsigned int gup_flags, struct page **pages,
+@@ -989,9 +989,9 @@ EXPORT_SYMBOL(get_user_pages_locked);
+ /*
+  * get_user_pages_unlocked() is suitable to replace the form:
+  *
+- *      down_read(&mm->mmap_sem);
++ *      down_read_cst(&mm->mmap_sem);
+  *      get_user_pages(tsk, mm, ..., pages, NULL);
+- *      up_read(&mm->mmap_sem);
++ *      up_read_cst(&mm->mmap_sem);
+  *
+  *  with:
+  *
+@@ -1008,11 +1008,11 @@ long get_user_pages_unlocked(unsigned long start, unsigned long nr_pages,
+ 	int locked = 1;
+ 	long ret;
+ 
+-	down_read(&mm->mmap_sem);
++	down_read_cst(&mm->mmap_sem);
+ 	ret = __get_user_pages_locked(current, mm, start, nr_pages, pages, NULL,
+ 				      &locked, gup_flags | FOLL_TOUCH);
+ 	if (locked)
+-		up_read(&mm->mmap_sem);
++		up_read_cst(&mm->mmap_sem);
+ 	return ret;
+ }
+ EXPORT_SYMBOL(get_user_pages_unlocked);
+@@ -1195,7 +1195,7 @@ long populate_vma_page_range(struct vm_area_struct *vma,
+ 	VM_BUG_ON(end   & ~PAGE_MASK);
+ 	VM_BUG_ON_VMA(start < vma->vm_start, vma);
+ 	VM_BUG_ON_VMA(end   > vma->vm_end, vma);
+-	VM_BUG_ON_MM(!rwsem_is_locked(&mm->mmap_sem), mm);
++	/* VM_BUG_ON_MM(!rwsem_is_locked(&mm->mmap_sem), mm); */
+ 
+ 	gup_flags = FOLL_TOUCH | FOLL_POPULATE | FOLL_MLOCK;
+ 	if (vma->vm_flags & VM_LOCKONFAULT)
+@@ -1247,7 +1247,7 @@ int __mm_populate(unsigned long start, unsigned long len, int ignore_errors)
+ 		 */
+ 		if (!locked) {
+ 			locked = 1;
+-			down_read(&mm->mmap_sem);
++			down_read_cst(&mm->mmap_sem);
+ 			vma = find_vma(mm, nstart);
+ 		} else if (nstart >= vma->vm_end)
+ 			vma = vma->vm_next;
+@@ -1279,7 +1279,7 @@ int __mm_populate(unsigned long start, unsigned long len, int ignore_errors)
+ 		ret = 0;
+ 	}
+ 	if (locked)
+-		up_read(&mm->mmap_sem);
++		up_read_cst(&mm->mmap_sem);
+ 	return ret;	/* 0 or negative error code */
+ }
+ 
+diff --git a/mm/init-mm.c b/mm/init-mm.c
+index a787a31..4b5fb25 100644
+--- a/mm/init-mm.c
++++ b/mm/init-mm.c
+@@ -30,7 +30,7 @@ struct mm_struct init_mm = {
+ 	.pgd		= swapper_pg_dir,
+ 	.mm_users	= ATOMIC_INIT(2),
+ 	.mm_count	= ATOMIC_INIT(1),
+-	.mmap_sem	= __RWSEM_INITIALIZER(init_mm.mmap_sem),
++	.mmap_sem	= __RWSEM_CST_INITIALIZER(init_mm.mmap_sem),
+ 	.page_table_lock =  __SPIN_LOCK_UNLOCKED(init_mm.page_table_lock),
+ 	.arg_lock	=  __SPIN_LOCK_UNLOCKED(init_mm.arg_lock),
+ 	.mmlist		= LIST_HEAD_INIT(init_mm.mmlist),
+diff --git a/mm/khugepaged.c b/mm/khugepaged.c
+index a31d740..af3ca05 100644
+--- a/mm/khugepaged.c
++++ b/mm/khugepaged.c
+@@ -496,8 +496,8 @@ void __khugepaged_exit(struct mm_struct *mm)
+ 		 * khugepaged has finished working on the pagetables
+ 		 * under the mmap_sem.
+ 		 */
+-		down_write(&mm->mmap_sem);
+-		up_write(&mm->mmap_sem);
++		down_write_cst(&mm->mmap_sem);
++		up_write_cst(&mm->mmap_sem);
+ 	}
+ }
+ 
+@@ -906,7 +906,7 @@ static bool __collapse_huge_page_swapin(struct mm_struct *mm,
+ 
+ 		/* do_swap_page returns VM_FAULT_RETRY with released mmap_sem */
+ 		if (ret & VM_FAULT_RETRY) {
+-			down_read(&mm->mmap_sem);
++			down_read_cst(&mm->mmap_sem);
+ 			if (hugepage_vma_revalidate(mm, address, &vmf.vma)) {
+ 				/* vma is no longer available, don't continue to swapin */
+ 				trace_mm_collapse_huge_page_swapin(mm, swapped_in, referenced, 0);
+@@ -959,7 +959,7 @@ static void collapse_huge_page(struct mm_struct *mm,
+ 	 * sync compaction, and we do not need to hold the mmap_sem during
+ 	 * that. We will recheck the vma after taking it again in write mode.
+ 	 */
+-	up_read(&mm->mmap_sem);
++	up_read_cst(&mm->mmap_sem);
+ 	new_page = khugepaged_alloc_page(hpage, gfp, node);
+ 	if (!new_page) {
+ 		result = SCAN_ALLOC_HUGE_PAGE_FAIL;
+@@ -971,11 +971,11 @@ static void collapse_huge_page(struct mm_struct *mm,
+ 		goto out_nolock;
+ 	}
+ 
+-	down_read(&mm->mmap_sem);
++	down_read_cst(&mm->mmap_sem);
+ 	result = hugepage_vma_revalidate(mm, address, &vma);
+ 	if (result) {
+ 		mem_cgroup_cancel_charge(new_page, memcg, true);
+-		up_read(&mm->mmap_sem);
++		up_read_cst(&mm->mmap_sem);
+ 		goto out_nolock;
+ 	}
+ 
+@@ -983,7 +983,7 @@ static void collapse_huge_page(struct mm_struct *mm,
+ 	if (!pmd) {
+ 		result = SCAN_PMD_NULL;
+ 		mem_cgroup_cancel_charge(new_page, memcg, true);
+-		up_read(&mm->mmap_sem);
++		up_read_cst(&mm->mmap_sem);
+ 		goto out_nolock;
+ 	}
+ 
+@@ -994,17 +994,17 @@ static void collapse_huge_page(struct mm_struct *mm,
+ 	 */
+ 	if (!__collapse_huge_page_swapin(mm, vma, address, pmd, referenced)) {
+ 		mem_cgroup_cancel_charge(new_page, memcg, true);
+-		up_read(&mm->mmap_sem);
++		up_read_cst(&mm->mmap_sem);
+ 		goto out_nolock;
+ 	}
+ 
+-	up_read(&mm->mmap_sem);
++	up_read_cst(&mm->mmap_sem);
+ 	/*
+ 	 * Prevent all access to pagetables with the exception of
+ 	 * gup_fast later handled by the ptep_clear_flush and the VM
+ 	 * handled by the anon_vma lock + PG_lock.
+ 	 */
+-	down_write(&mm->mmap_sem);
++	down_write_cst(&mm->mmap_sem);
+ 	result = hugepage_vma_revalidate(mm, address, &vma);
+ 	if (result)
+ 		goto out;
+@@ -1087,7 +1087,7 @@ static void collapse_huge_page(struct mm_struct *mm,
+ 	khugepaged_pages_collapsed++;
+ 	result = SCAN_SUCCEED;
+ out_up_write:
+-	up_write(&mm->mmap_sem);
++	up_write_cst(&mm->mmap_sem);
+ out_nolock:
+ 	trace_mm_collapse_huge_page(mm, isolated, result);
+ 	return;
+@@ -1270,12 +1270,12 @@ static void retract_page_tables(struct address_space *mapping, pgoff_t pgoff)
+ 		 * re-fault. Not ideal, but it's more important to not disturb
+ 		 * the system too much.
+ 		 */
+-		if (down_write_trylock(&vma->vm_mm->mmap_sem)) {
++		if (down_write_cst_trylock(&vma->vm_mm->mmap_sem)) {
+ 			spinlock_t *ptl = pmd_lock(vma->vm_mm, pmd);
+ 			/* assume page table is clear */
+ 			_pmd = pmdp_collapse_flush(vma, addr, pmd);
+ 			spin_unlock(ptl);
+-			up_write(&vma->vm_mm->mmap_sem);
++			up_write_cst(&vma->vm_mm->mmap_sem);
+ 			mm_dec_nr_ptes(vma->vm_mm);
+ 			pte_free(vma->vm_mm, pmd_pgtable(_pmd));
+ 		}
+@@ -1683,7 +1683,7 @@ static unsigned int khugepaged_scan_mm_slot(unsigned int pages,
+ 	 * the next mm on the list.
+ 	 */
+ 	vma = NULL;
+-	if (unlikely(!down_read_trylock(&mm->mmap_sem)))
++	if (unlikely(!down_read_cst_trylock(&mm->mmap_sem)))
+ 		goto breakouterloop_mmap_sem;
+ 	if (likely(!khugepaged_test_exit(mm)))
+ 		vma = find_vma(mm, khugepaged_scan.address);
+@@ -1728,7 +1728,7 @@ static unsigned int khugepaged_scan_mm_slot(unsigned int pages,
+ 				if (!shmem_huge_enabled(vma))
+ 					goto skip;
+ 				file = get_file(vma->vm_file);
+-				up_read(&mm->mmap_sem);
++				up_read_cst(&mm->mmap_sem);
+ 				ret = 1;
+ 				khugepaged_scan_shmem(mm, file->f_mapping,
+ 						pgoff, hpage);
+@@ -1749,7 +1749,7 @@ static unsigned int khugepaged_scan_mm_slot(unsigned int pages,
+ 		}
+ 	}
+ breakouterloop:
+-	up_read(&mm->mmap_sem); /* exit_mmap will destroy ptes after this */
++	up_read_cst(&mm->mmap_sem); /* exit_mmap will destroy ptes after this */
+ breakouterloop_mmap_sem:
+ 
+ 	spin_lock(&khugepaged_mm_lock);
+diff --git a/mm/ksm.c b/mm/ksm.c
+index 5b0894b..47b8aca 100644
+--- a/mm/ksm.c
++++ b/mm/ksm.c
+@@ -542,11 +542,11 @@ static void break_cow(struct rmap_item *rmap_item)
+ 	 */
+ 	put_anon_vma(rmap_item->anon_vma);
+ 
+-	down_read(&mm->mmap_sem);
++	down_read_cst(&mm->mmap_sem);
+ 	vma = find_mergeable_vma(mm, addr);
+ 	if (vma)
+ 		break_ksm(vma, addr);
+-	up_read(&mm->mmap_sem);
++	up_read_cst(&mm->mmap_sem);
+ }
+ 
+ static struct page *get_mergeable_page(struct rmap_item *rmap_item)
+@@ -556,7 +556,7 @@ static struct page *get_mergeable_page(struct rmap_item *rmap_item)
+ 	struct vm_area_struct *vma;
+ 	struct page *page;
+ 
+-	down_read(&mm->mmap_sem);
++	down_read_cst(&mm->mmap_sem);
+ 	vma = find_mergeable_vma(mm, addr);
+ 	if (!vma)
+ 		goto out;
+@@ -572,7 +572,7 @@ static struct page *get_mergeable_page(struct rmap_item *rmap_item)
+ out:
+ 		page = NULL;
+ 	}
+-	up_read(&mm->mmap_sem);
++	up_read_cst(&mm->mmap_sem);
+ 	return page;
+ }
+ 
+@@ -961,7 +961,7 @@ static int unmerge_and_remove_all_rmap_items(void)
+ 	for (mm_slot = ksm_scan.mm_slot;
+ 			mm_slot != &ksm_mm_head; mm_slot = ksm_scan.mm_slot) {
+ 		mm = mm_slot->mm;
+-		down_read(&mm->mmap_sem);
++		down_read_cst(&mm->mmap_sem);
+ 		for (vma = mm->mmap; vma; vma = vma->vm_next) {
+ 			if (ksm_test_exit(mm))
+ 				break;
+@@ -974,7 +974,7 @@ static int unmerge_and_remove_all_rmap_items(void)
+ 		}
+ 
+ 		remove_trailing_rmap_items(mm_slot, &mm_slot->rmap_list);
+-		up_read(&mm->mmap_sem);
++		up_read_cst(&mm->mmap_sem);
+ 
+ 		spin_lock(&ksm_mmlist_lock);
+ 		ksm_scan.mm_slot = list_entry(mm_slot->mm_list.next,
+@@ -997,7 +997,7 @@ static int unmerge_and_remove_all_rmap_items(void)
+ 	return 0;
+ 
+ error:
+-	up_read(&mm->mmap_sem);
++	up_read_cst(&mm->mmap_sem);
+ 	spin_lock(&ksm_mmlist_lock);
+ 	ksm_scan.mm_slot = &ksm_mm_head;
+ 	spin_unlock(&ksm_mmlist_lock);
+@@ -1284,7 +1284,7 @@ static int try_to_merge_with_ksm_page(struct rmap_item *rmap_item,
+ 	struct vm_area_struct *vma;
+ 	int err = -EFAULT;
+ 
+-	down_read(&mm->mmap_sem);
++	down_read_cst(&mm->mmap_sem);
+ 	vma = find_mergeable_vma(mm, rmap_item->address);
+ 	if (!vma)
+ 		goto out;
+@@ -1300,7 +1300,7 @@ static int try_to_merge_with_ksm_page(struct rmap_item *rmap_item,
+ 	rmap_item->anon_vma = vma->anon_vma;
+ 	get_anon_vma(vma->anon_vma);
+ out:
+-	up_read(&mm->mmap_sem);
++	up_read_cst(&mm->mmap_sem);
+ 	return err;
+ }
+ 
+@@ -2104,11 +2104,11 @@ static void cmp_and_merge_page(struct page *page, struct rmap_item *rmap_item)
+ 	if (ksm_use_zero_pages && (checksum == zero_checksum)) {
+ 		struct vm_area_struct *vma;
+ 
+-		down_read(&mm->mmap_sem);
++		down_read_cst(&mm->mmap_sem);
+ 		vma = find_mergeable_vma(mm, rmap_item->address);
+ 		err = try_to_merge_one_page(vma, page,
+ 					    ZERO_PAGE(rmap_item->address));
+-		up_read(&mm->mmap_sem);
++		up_read_cst(&mm->mmap_sem);
+ 		/*
+ 		 * In case of failure, the page was not really empty, so we
+ 		 * need to continue. Otherwise we're done.
+@@ -2270,7 +2270,7 @@ static struct rmap_item *scan_get_next_rmap_item(struct page **page)
+ 	}
+ 
+ 	mm = slot->mm;
+-	down_read(&mm->mmap_sem);
++	down_read_cst(&mm->mmap_sem);
+ 	if (ksm_test_exit(mm))
+ 		vma = NULL;
+ 	else
+@@ -2304,7 +2304,7 @@ static struct rmap_item *scan_get_next_rmap_item(struct page **page)
+ 					ksm_scan.address += PAGE_SIZE;
+ 				} else
+ 					put_page(*page);
+-				up_read(&mm->mmap_sem);
++				up_read_cst(&mm->mmap_sem);
+ 				return rmap_item;
+ 			}
+ 			put_page(*page);
+@@ -2342,12 +2342,12 @@ static struct rmap_item *scan_get_next_rmap_item(struct page **page)
+ 
+ 		free_mm_slot(slot);
+ 		clear_bit(MMF_VM_MERGEABLE, &mm->flags);
+-		up_read(&mm->mmap_sem);
++		up_read_cst(&mm->mmap_sem);
+ 		mmdrop(mm);
+ 	} else {
+-		up_read(&mm->mmap_sem);
++		up_read_cst(&mm->mmap_sem);
+ 		/*
+-		 * up_read(&mm->mmap_sem) first because after
++		 * up_read_cst(&mm->mmap_sem) first because after
+ 		 * spin_unlock(&ksm_mmlist_lock) run, the "mm" may
+ 		 * already have been freed under us by __ksm_exit()
+ 		 * because the "mm_slot" is still hashed and
+@@ -2540,8 +2540,8 @@ void __ksm_exit(struct mm_struct *mm)
+ 		clear_bit(MMF_VM_MERGEABLE, &mm->flags);
+ 		mmdrop(mm);
+ 	} else if (mm_slot) {
+-		down_write(&mm->mmap_sem);
+-		up_write(&mm->mmap_sem);
++		down_write_cst(&mm->mmap_sem);
++		up_write_cst(&mm->mmap_sem);
+ 	}
+ }
+ 
+diff --git a/mm/madvise.c b/mm/madvise.c
+index 972a9ea..a97159b 100644
+--- a/mm/madvise.c
++++ b/mm/madvise.c
+@@ -523,7 +523,7 @@ static long madvise_dontneed_free(struct vm_area_struct *vma,
+ 	if (!userfaultfd_remove(vma, start, end)) {
+ 		*prev = NULL; /* mmap_sem has been dropped, prev is stale */
+ 
+-		down_read(&current->mm->mmap_sem);
++		down_read_cst(&current->mm->mmap_sem);
+ 		vma = find_vma(current->mm, start);
+ 		if (!vma)
+ 			return -ENOMEM;
+@@ -605,13 +605,13 @@ static long madvise_remove(struct vm_area_struct *vma,
+ 	get_file(f);
+ 	if (userfaultfd_remove(vma, start, end)) {
+ 		/* mmap_sem was not released by userfaultfd_remove() */
+-		up_read(&current->mm->mmap_sem);
++		up_read_cst(&current->mm->mmap_sem);
+ 	}
+ 	error = vfs_fallocate(f,
+ 				FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE,
+ 				offset, end - start);
+ 	fput(f);
+-	down_read(&current->mm->mmap_sem);
++	down_read_cst(&current->mm->mmap_sem);
+ 	return error;
+ }
+ 
+@@ -834,10 +834,10 @@ SYSCALL_DEFINE3(madvise, unsigned long, start, size_t, len_in, int, behavior)
+ 
+ 	write = madvise_need_mmap_write(behavior);
+ 	if (write) {
+-		if (down_write_killable(&current->mm->mmap_sem))
++		if (down_write_cst_killable(&current->mm->mmap_sem))
+ 			return -EINTR;
+ 	} else {
+-		down_read(&current->mm->mmap_sem);
++		down_read_cst(&current->mm->mmap_sem);
+ 	}
+ 
+ 	/*
+@@ -887,9 +887,9 @@ SYSCALL_DEFINE3(madvise, unsigned long, start, size_t, len_in, int, behavior)
+ out:
+ 	blk_finish_plug(&plug);
+ 	if (write)
+-		up_write(&current->mm->mmap_sem);
++		up_write_cst(&current->mm->mmap_sem);
+ 	else
+-		up_read(&current->mm->mmap_sem);
++		up_read_cst(&current->mm->mmap_sem);
+ 
+ 	return error;
+ }
+diff --git a/mm/memcontrol.c b/mm/memcontrol.c
+index e79cb59..a4e64aa 100644
+--- a/mm/memcontrol.c
++++ b/mm/memcontrol.c
+@@ -5006,10 +5006,10 @@ static unsigned long mem_cgroup_count_precharge(struct mm_struct *mm)
+ 		.pmd_entry = mem_cgroup_count_precharge_pte_range,
+ 		.mm = mm,
+ 	};
+-	down_read(&mm->mmap_sem);
++	down_read_cst(&mm->mmap_sem);
+ 	walk_page_range(0, mm->highest_vm_end,
+ 			&mem_cgroup_count_precharge_walk);
+-	up_read(&mm->mmap_sem);
++	up_read_cst(&mm->mmap_sem);
+ 
+ 	precharge = mc.precharge;
+ 	mc.precharge = 0;
+@@ -5293,7 +5293,7 @@ static void mem_cgroup_move_charge(void)
+ 	atomic_inc(&mc.from->moving_account);
+ 	synchronize_rcu();
+ retry:
+-	if (unlikely(!down_read_trylock(&mc.mm->mmap_sem))) {
++	if (unlikely(!down_read_cst_trylock(&mc.mm->mmap_sem))) {
+ 		/*
+ 		 * Someone who are holding the mmap_sem might be waiting in
+ 		 * waitq. So we cancel all extra charges, wake up all waiters,
+@@ -5311,7 +5311,7 @@ static void mem_cgroup_move_charge(void)
+ 	 */
+ 	walk_page_range(0, mc.mm->highest_vm_end, &mem_cgroup_move_charge_walk);
+ 
+-	up_read(&mc.mm->mmap_sem);
++	up_read_cst(&mc.mm->mmap_sem);
+ 	atomic_dec(&mc.from->moving_account);
+ }
+ 
+diff --git a/mm/memory.c b/mm/memory.c
+index c467102..037ddd3 100644
+--- a/mm/memory.c
++++ b/mm/memory.c
+@@ -1458,7 +1458,7 @@ static inline unsigned long zap_pud_range(struct mmu_gather *tlb,
+ 		next = pud_addr_end(addr, end);
+ 		if (pud_trans_huge(*pud) || pud_devmap(*pud)) {
+ 			if (next - addr != HPAGE_PUD_SIZE) {
+-				VM_BUG_ON_VMA(!rwsem_is_locked(&tlb->mm->mmap_sem), vma);
++				/* VM_BUG_ON_VMA(!rwsem_is_locked(&tlb->mm->mmap_sem), vma); */
+ 				split_huge_pud(vma, pud, addr);
+ 			} else if (zap_huge_pud(tlb, vma, pud, addr))
+ 				goto next;
+@@ -1759,7 +1759,7 @@ int vm_insert_page(struct vm_area_struct *vma, unsigned long addr,
+ 	if (!page_count(page))
+ 		return -EINVAL;
+ 	if (!(vma->vm_flags & VM_MIXEDMAP)) {
+-		BUG_ON(down_read_trylock(&vma->vm_mm->mmap_sem));
++		/* BUG_ON(down_read_trylock(&vma->vm_mm->mmap_sem)); */
+ 		BUG_ON(vma->vm_flags & VM_PFNMAP);
+ 		vma->vm_flags |= VM_MIXEDMAP;
+ 	}
+@@ -4433,7 +4433,7 @@ int __access_remote_vm(struct task_struct *tsk, struct mm_struct *mm,
+ 	void *old_buf = buf;
+ 	int write = gup_flags & FOLL_WRITE;
+ 
+-	down_read(&mm->mmap_sem);
++	down_read_cst(&mm->mmap_sem);
+ 	/* ignore errors, just check how much was successfully transferred */
+ 	while (len) {
+ 		int bytes, ret, offset;
+@@ -4482,7 +4482,7 @@ int __access_remote_vm(struct task_struct *tsk, struct mm_struct *mm,
+ 		buf += bytes;
+ 		addr += bytes;
+ 	}
+-	up_read(&mm->mmap_sem);
++	up_read_cst(&mm->mmap_sem);
+ 
+ 	return buf - old_buf;
+ }
+@@ -4537,7 +4537,7 @@ void print_vma_addr(char *prefix, unsigned long ip)
+ 	/*
+ 	 * we might be running from an atomic context so we cannot sleep
+ 	 */
+-	if (!down_read_trylock(&mm->mmap_sem))
++	if (!down_read_cst_trylock(&mm->mmap_sem))
+ 		return;
+ 
+ 	vma = find_vma(mm, ip);
+@@ -4556,7 +4556,7 @@ void print_vma_addr(char *prefix, unsigned long ip)
+ 			free_page((unsigned long)buf);
+ 		}
+ 	}
+-	up_read(&mm->mmap_sem);
++	up_read_cst(&mm->mmap_sem);
+ }
+ 
+ #if defined(CONFIG_PROVE_LOCKING) || defined(CONFIG_DEBUG_ATOMIC_SLEEP)
+diff --git a/mm/mempolicy.c b/mm/mempolicy.c
+index da858f7..754ca07 100644
+--- a/mm/mempolicy.c
++++ b/mm/mempolicy.c
+@@ -379,10 +379,10 @@ void mpol_rebind_mm(struct mm_struct *mm, nodemask_t *new)
+ {
+ 	struct vm_area_struct *vma;
+ 
+-	down_write(&mm->mmap_sem);
++	down_write_cst(&mm->mmap_sem);
+ 	for (vma = mm->mmap; vma; vma = vma->vm_next)
+ 		mpol_rebind_policy(vma->vm_policy, new);
+-	up_write(&mm->mmap_sem);
++	up_write_cst(&mm->mmap_sem);
+ }
+ 
+ static const struct mempolicy_operations mpol_ops[MPOL_MAX] = {
+@@ -839,10 +839,10 @@ static long do_get_mempolicy(int *policy, nodemask_t *nmask,
+ 		 * vma/shared policy at addr is NULL.  We
+ 		 * want to return MPOL_DEFAULT in this case.
+ 		 */
+-		down_read(&mm->mmap_sem);
++		down_read_cst(&mm->mmap_sem);
+ 		vma = find_vma_intersection(mm, addr, addr+1);
+ 		if (!vma) {
+-			up_read(&mm->mmap_sem);
++			up_read_cst(&mm->mmap_sem);
+ 			return -EFAULT;
+ 		}
+ 		if (vma->vm_ops && vma->vm_ops->get_policy)
+@@ -892,7 +892,7 @@ static long do_get_mempolicy(int *policy, nodemask_t *nmask,
+  out:
+ 	mpol_cond_put(pol);
+ 	if (vma)
+-		up_read(&current->mm->mmap_sem);
++		up_read_cst(&current->mm->mmap_sem);
+ 	return err;
+ }
+ 
+@@ -988,7 +988,7 @@ int do_migrate_pages(struct mm_struct *mm, const nodemask_t *from,
+ 	if (err)
+ 		return err;
+ 
+-	down_read(&mm->mmap_sem);
++	down_read_cst(&mm->mmap_sem);
+ 
+ 	/*
+ 	 * Find a 'source' bit set in 'tmp' whose corresponding 'dest'
+@@ -1069,7 +1069,7 @@ int do_migrate_pages(struct mm_struct *mm, const nodemask_t *from,
+ 		if (err < 0)
+ 			break;
+ 	}
+-	up_read(&mm->mmap_sem);
++	up_read_cst(&mm->mmap_sem);
+ 	if (err < 0)
+ 		return err;
+ 	return busy;
+@@ -1190,12 +1190,12 @@ static long do_mbind(unsigned long start, unsigned long len,
+ 	{
+ 		NODEMASK_SCRATCH(scratch);
+ 		if (scratch) {
+-			down_write(&mm->mmap_sem);
++			down_write_cst(&mm->mmap_sem);
+ 			task_lock(current);
+ 			err = mpol_set_nodemask(new, nmask, scratch);
+ 			task_unlock(current);
+ 			if (err)
+-				up_write(&mm->mmap_sem);
++				up_write_cst(&mm->mmap_sem);
+ 		} else
+ 			err = -ENOMEM;
+ 		NODEMASK_SCRATCH_FREE(scratch);
+@@ -1224,7 +1224,7 @@ static long do_mbind(unsigned long start, unsigned long len,
+ 	} else
+ 		putback_movable_pages(&pagelist);
+ 
+-	up_write(&mm->mmap_sem);
++	up_write_cst(&mm->mmap_sem);
+  mpol_out:
+ 	mpol_put(new);
+ 	return err;
+diff --git a/mm/migrate.c b/mm/migrate.c
+index d6a2e89..fa99f89 100644
+--- a/mm/migrate.c
++++ b/mm/migrate.c
+@@ -1498,7 +1498,7 @@ static int add_page_for_migration(struct mm_struct *mm, unsigned long addr,
+ 	unsigned int follflags;
+ 	int err;
+ 
+-	down_read(&mm->mmap_sem);
++	down_read_cst(&mm->mmap_sem);
+ 	err = -EFAULT;
+ 	vma = find_vma(mm, addr);
+ 	if (!vma || addr < vma->vm_start || !vma_migratable(vma))
+@@ -1551,7 +1551,7 @@ static int add_page_for_migration(struct mm_struct *mm, unsigned long addr,
+ 	 */
+ 	put_page(page);
+ out:
+-	up_read(&mm->mmap_sem);
++	up_read_cst(&mm->mmap_sem);
+ 	return err;
+ }
+ 
+@@ -1653,7 +1653,7 @@ static void do_pages_stat_array(struct mm_struct *mm, unsigned long nr_pages,
+ {
+ 	unsigned long i;
+ 
+-	down_read(&mm->mmap_sem);
++	down_read_cst(&mm->mmap_sem);
+ 
+ 	for (i = 0; i < nr_pages; i++) {
+ 		unsigned long addr = (unsigned long)(*pages);
+@@ -1680,7 +1680,7 @@ static void do_pages_stat_array(struct mm_struct *mm, unsigned long nr_pages,
+ 		status++;
+ 	}
+ 
+-	up_read(&mm->mmap_sem);
++	up_read_cst(&mm->mmap_sem);
+ }
+ 
+ /*
+diff --git a/mm/mincore.c b/mm/mincore.c
+index fc37afe..35637da 100644
+--- a/mm/mincore.c
++++ b/mm/mincore.c
+@@ -253,9 +253,9 @@ SYSCALL_DEFINE3(mincore, unsigned long, start, size_t, len,
+ 		 * Do at most PAGE_SIZE entries per iteration, due to
+ 		 * the temporary buffer size.
+ 		 */
+-		down_read(&current->mm->mmap_sem);
++		down_read_cst(&current->mm->mmap_sem);
+ 		retval = do_mincore(start, min(pages, PAGE_SIZE), tmp);
+-		up_read(&current->mm->mmap_sem);
++		up_read_cst(&current->mm->mmap_sem);
+ 
+ 		if (retval <= 0)
+ 			break;
+diff --git a/mm/mlock.c b/mm/mlock.c
+index 41cc47e..676c754 100644
+--- a/mm/mlock.c
++++ b/mm/mlock.c
+@@ -684,7 +684,7 @@ static __must_check int do_mlock(unsigned long start, size_t len, vm_flags_t fla
+ 	lock_limit >>= PAGE_SHIFT;
+ 	locked = len >> PAGE_SHIFT;
+ 
+-	if (down_write_killable(&current->mm->mmap_sem))
++	if (down_write_cst_killable(&current->mm->mmap_sem))
+ 		return -EINTR;
+ 
+ 	locked += current->mm->locked_vm;
+@@ -703,7 +703,7 @@ static __must_check int do_mlock(unsigned long start, size_t len, vm_flags_t fla
+ 	if ((locked <= lock_limit) || capable(CAP_IPC_LOCK))
+ 		error = apply_vma_lock_flags(start, len, flags);
+ 
+-	up_write(&current->mm->mmap_sem);
++	up_write_cst(&current->mm->mmap_sem);
+ 	if (error)
+ 		return error;
+ 
+@@ -738,10 +738,10 @@ SYSCALL_DEFINE2(munlock, unsigned long, start, size_t, len)
+ 	len = PAGE_ALIGN(len + (offset_in_page(start)));
+ 	start &= PAGE_MASK;
+ 
+-	if (down_write_killable(&current->mm->mmap_sem))
++	if (down_write_cst_killable(&current->mm->mmap_sem))
+ 		return -EINTR;
+ 	ret = apply_vma_lock_flags(start, len, 0);
+-	up_write(&current->mm->mmap_sem);
++	up_write_cst(&current->mm->mmap_sem);
+ 
+ 	return ret;
+ }
+@@ -806,14 +806,14 @@ SYSCALL_DEFINE1(mlockall, int, flags)
+ 	lock_limit = rlimit(RLIMIT_MEMLOCK);
+ 	lock_limit >>= PAGE_SHIFT;
+ 
+-	if (down_write_killable(&current->mm->mmap_sem))
++	if (down_write_cst_killable(&current->mm->mmap_sem))
+ 		return -EINTR;
+ 
+ 	ret = -ENOMEM;
+ 	if (!(flags & MCL_CURRENT) || (current->mm->total_vm <= lock_limit) ||
+ 	    capable(CAP_IPC_LOCK))
+ 		ret = apply_mlockall_flags(flags);
+-	up_write(&current->mm->mmap_sem);
++	up_write_cst(&current->mm->mmap_sem);
+ 	if (!ret && (flags & MCL_CURRENT))
+ 		mm_populate(0, TASK_SIZE);
+ 
+@@ -824,10 +824,10 @@ SYSCALL_DEFINE0(munlockall)
+ {
+ 	int ret;
+ 
+-	if (down_write_killable(&current->mm->mmap_sem))
++	if (down_write_cst_killable(&current->mm->mmap_sem))
+ 		return -EINTR;
+ 	ret = apply_mlockall_flags(0);
+-	up_write(&current->mm->mmap_sem);
++	up_write_cst(&current->mm->mmap_sem);
+ 	return ret;
+ }
+ 
+diff --git a/mm/mmap.c b/mm/mmap.c
+index 5f2b2b1..de788c2 100644
+--- a/mm/mmap.c
++++ b/mm/mmap.c
+@@ -198,7 +198,7 @@ SYSCALL_DEFINE1(brk, unsigned long, brk)
+ 	bool populate;
+ 	LIST_HEAD(uf);
+ 
+-	if (down_write_killable(&mm->mmap_sem))
++	if (down_write_cst_killable(&mm->mmap_sem))
+ 		return -EINTR;
+ 
+ #ifdef CONFIG_COMPAT_BRK
+@@ -251,7 +251,7 @@ SYSCALL_DEFINE1(brk, unsigned long, brk)
+ set_brk:
+ 	mm->brk = brk;
+ 	populate = newbrk > oldbrk && (mm->def_flags & VM_LOCKED) != 0;
+-	up_write(&mm->mmap_sem);
++	up_write_cst(&mm->mmap_sem);
+ 	userfaultfd_unmap_complete(mm, &uf);
+ 	if (populate)
+ 		mm_populate(oldbrk, newbrk - oldbrk);
+@@ -259,7 +259,7 @@ SYSCALL_DEFINE1(brk, unsigned long, brk)
+ 
+ out:
+ 	retval = mm->brk;
+-	up_write(&mm->mmap_sem);
++	up_write_cst(&mm->mmap_sem);
+ 	return retval;
+ }
+ 
+@@ -2794,11 +2794,11 @@ int vm_munmap(unsigned long start, size_t len)
+ 	struct mm_struct *mm = current->mm;
+ 	LIST_HEAD(uf);
+ 
+-	if (down_write_killable(&mm->mmap_sem))
++	if (down_write_cst_killable(&mm->mmap_sem))
+ 		return -EINTR;
+ 
+ 	ret = do_munmap(mm, start, len, &uf);
+-	up_write(&mm->mmap_sem);
++	up_write_cst(&mm->mmap_sem);
+ 	userfaultfd_unmap_complete(mm, &uf);
+ 	return ret;
+ }
+@@ -2839,7 +2839,7 @@ SYSCALL_DEFINE5(remap_file_pages, unsigned long, start, unsigned long, size,
+ 	if (pgoff + (size >> PAGE_SHIFT) < pgoff)
+ 		return ret;
+ 
+-	if (down_write_killable(&mm->mmap_sem))
++	if (down_write_cst_killable(&mm->mmap_sem))
+ 		return -EINTR;
+ 
+ 	vma = find_vma(mm, start);
+@@ -2902,7 +2902,7 @@ SYSCALL_DEFINE5(remap_file_pages, unsigned long, start, unsigned long, size,
+ 			prot, flags, pgoff, &populate, NULL);
+ 	fput(file);
+ out:
+-	up_write(&mm->mmap_sem);
++	up_write_cst(&mm->mmap_sem);
+ 	if (populate)
+ 		mm_populate(ret, populate);
+ 	if (!IS_ERR_VALUE(ret))
+@@ -2913,7 +2913,7 @@ SYSCALL_DEFINE5(remap_file_pages, unsigned long, start, unsigned long, size,
+ static inline void verify_mm_writelocked(struct mm_struct *mm)
+ {
+ #ifdef CONFIG_DEBUG_VM
+-	if (unlikely(down_read_trylock(&mm->mmap_sem))) {
++	if (unlikely(down_read_cst_trylock(&mm->mmap_sem))) {
+ 		WARN_ON(1);
+ 		up_read(&mm->mmap_sem);
+ 	}
+@@ -3017,12 +3017,12 @@ int vm_brk_flags(unsigned long addr, unsigned long request, unsigned long flags)
+ 	if (!len)
+ 		return 0;
+ 
+-	if (down_write_killable(&mm->mmap_sem))
++	if (down_write_cst_killable(&mm->mmap_sem))
+ 		return -EINTR;
+ 
+ 	ret = do_brk_flags(addr, len, flags, &uf);
+ 	populate = ((mm->def_flags & VM_LOCKED) != 0);
+-	up_write(&mm->mmap_sem);
++	up_write_cst(&mm->mmap_sem);
+ 	userfaultfd_unmap_complete(mm, &uf);
+ 	if (populate && !ret)
+ 		mm_populate(addr, len);
+@@ -3066,8 +3066,8 @@ void exit_mmap(struct mm_struct *mm)
+ 		(void)__oom_reap_task_mm(mm);
+ 
+ 		set_bit(MMF_OOM_SKIP, &mm->flags);
+-		down_write(&mm->mmap_sem);
+-		up_write(&mm->mmap_sem);
++		down_write_cst(&mm->mmap_sem);
++		up_write_cst(&mm->mmap_sem);
+ 	}
+ 
+ 	if (mm->locked_vm) {
+@@ -3445,7 +3445,7 @@ static void vm_lock_mapping(struct mm_struct *mm, struct address_space *mapping)
+ 		 */
+ 		if (test_and_set_bit(AS_MM_ALL_LOCKS, &mapping->flags))
+ 			BUG();
+-		down_write_nest_lock(&mapping->i_mmap_rwsem, &mm->mmap_sem);
++		down_write_cst_nest_lock(&mapping->i_mmap_rwsem, &mm->mmap_sem);
+ 	}
+ }
+ 
+@@ -3491,7 +3491,7 @@ int mm_take_all_locks(struct mm_struct *mm)
+ 	struct vm_area_struct *vma;
+ 	struct anon_vma_chain *avc;
+ 
+-	BUG_ON(down_read_trylock(&mm->mmap_sem));
++	BUG_ON(down_read_cst_trylock(&mm->mmap_sem));
+ 
+ 	mutex_lock(&mm_all_locks_mutex);
+ 
+@@ -3571,7 +3571,7 @@ void mm_drop_all_locks(struct mm_struct *mm)
+ 	struct vm_area_struct *vma;
+ 	struct anon_vma_chain *avc;
+ 
+-	BUG_ON(down_read_trylock(&mm->mmap_sem));
++	BUG_ON(down_read_cst_trylock(&mm->mmap_sem));
+ 	BUG_ON(!mutex_is_locked(&mm_all_locks_mutex));
+ 
+ 	for (vma = mm->mmap; vma; vma = vma->vm_next) {
+diff --git a/mm/mmu_notifier.c b/mm/mmu_notifier.c
+index 82bb1a9..16c2e70 100644
+--- a/mm/mmu_notifier.c
++++ b/mm/mmu_notifier.c
+@@ -257,7 +257,7 @@ bool mm_has_blockable_invalidate_notifiers(struct mm_struct *mm)
+ 	int id;
+ 	bool ret = false;
+ 
+-	WARN_ON_ONCE(!rwsem_is_locked(&mm->mmap_sem));
++	/* WARN_ON_ONCE(!rwsem_is_locked(&mm->mmap_sem)); */
+ 
+ 	if (!mm_has_notifiers(mm))
+ 		return ret;
+@@ -293,7 +293,7 @@ static int do_mmu_notifier_register(struct mmu_notifier *mn,
+ 		goto out;
+ 
+ 	if (take_mmap_sem)
+-		down_write(&mm->mmap_sem);
++		down_write_cst(&mm->mmap_sem);
+ 	ret = mm_take_all_locks(mm);
+ 	if (unlikely(ret))
+ 		goto out_clean;
+@@ -322,7 +322,7 @@ static int do_mmu_notifier_register(struct mmu_notifier *mn,
+ 	mm_drop_all_locks(mm);
+ out_clean:
+ 	if (take_mmap_sem)
+-		up_write(&mm->mmap_sem);
++		up_write_cst(&mm->mmap_sem);
+ 	kfree(mmu_notifier_mm);
+ out:
+ 	BUG_ON(atomic_read(&mm->mm_users) <= 0);
+diff --git a/mm/mprotect.c b/mm/mprotect.c
+index 6d33162..fb03354 100644
+--- a/mm/mprotect.c
++++ b/mm/mprotect.c
+@@ -480,7 +480,7 @@ static int do_mprotect_pkey(unsigned long start, size_t len,
+ 
+ 	reqprot = prot;
+ 
+-	if (down_write_killable(&current->mm->mmap_sem))
++	if (down_write_cst_killable(&current->mm->mmap_sem))
+ 		return -EINTR;
+ 
+ 	/*
+@@ -570,7 +570,7 @@ static int do_mprotect_pkey(unsigned long start, size_t len,
+ 		prot = reqprot;
+ 	}
+ out:
+-	up_write(&current->mm->mmap_sem);
++	up_write_cst(&current->mm->mmap_sem);
+ 	return error;
+ }
+ 
+@@ -600,7 +600,7 @@ SYSCALL_DEFINE2(pkey_alloc, unsigned long, flags, unsigned long, init_val)
+ 	if (init_val & ~PKEY_ACCESS_MASK)
+ 		return -EINVAL;
+ 
+-	down_write(&current->mm->mmap_sem);
++	down_write_cst(&current->mm->mmap_sem);
+ 	pkey = mm_pkey_alloc(current->mm);
+ 
+ 	ret = -ENOSPC;
+@@ -614,7 +614,7 @@ SYSCALL_DEFINE2(pkey_alloc, unsigned long, flags, unsigned long, init_val)
+ 	}
+ 	ret = pkey;
+ out:
+-	up_write(&current->mm->mmap_sem);
++	up_write_cst(&current->mm->mmap_sem);
+ 	return ret;
+ }
+ 
+@@ -622,9 +622,9 @@ SYSCALL_DEFINE1(pkey_free, int, pkey)
+ {
+ 	int ret;
+ 
+-	down_write(&current->mm->mmap_sem);
++	down_write_cst(&current->mm->mmap_sem);
+ 	ret = mm_pkey_free(current->mm, pkey);
+-	up_write(&current->mm->mmap_sem);
++	up_write_cst(&current->mm->mmap_sem);
+ 
+ 	/*
+ 	 * We could provie warnings or errors if any VMA still
+diff --git a/mm/mremap.c b/mm/mremap.c
+index 5c2e185..c20cdf0 100644
+--- a/mm/mremap.c
++++ b/mm/mremap.c
+@@ -549,7 +549,7 @@ SYSCALL_DEFINE5(mremap, unsigned long, addr, unsigned long, old_len,
+ 	if (!new_len)
+ 		return ret;
+ 
+-	if (down_write_killable(&current->mm->mmap_sem))
++	if (down_write_cst_killable(&current->mm->mmap_sem))
+ 		return -EINTR;
+ 
+ 	if (flags & MREMAP_FIXED) {
+@@ -631,7 +631,7 @@ SYSCALL_DEFINE5(mremap, unsigned long, addr, unsigned long, old_len,
+ 		vm_unacct_memory(charged);
+ 		locked = 0;
+ 	}
+-	up_write(&current->mm->mmap_sem);
++	up_write_cst(&current->mm->mmap_sem);
+ 	if (locked && new_len > old_len)
+ 		mm_populate(new_addr + old_len, new_len - old_len);
+ 	userfaultfd_unmap_complete(mm, &uf_unmap_early);
+diff --git a/mm/msync.c b/mm/msync.c
+index ef30a42..9f03385 100644
+--- a/mm/msync.c
++++ b/mm/msync.c
+@@ -55,7 +55,7 @@ SYSCALL_DEFINE3(msync, unsigned long, start, size_t, len, int, flags)
+ 	 * If the interval [start,end) covers some unmapped address ranges,
+ 	 * just ignore them, but return -ENOMEM at the end.
+ 	 */
+-	down_read(&mm->mmap_sem);
++	down_read_cst(&mm->mmap_sem);
+ 	vma = find_vma(mm, start);
+ 	for (;;) {
+ 		struct file *file;
+@@ -86,12 +86,12 @@ SYSCALL_DEFINE3(msync, unsigned long, start, size_t, len, int, flags)
+ 		if ((flags & MS_SYNC) && file &&
+ 				(vma->vm_flags & VM_SHARED)) {
+ 			get_file(file);
+-			up_read(&mm->mmap_sem);
++			up_read_cst(&mm->mmap_sem);
+ 			error = vfs_fsync_range(file, fstart, fend, 1);
+ 			fput(file);
+ 			if (error || start >= end)
+ 				goto out;
+-			down_read(&mm->mmap_sem);
++			down_read_cst(&mm->mmap_sem);
+ 			vma = find_vma(mm, start);
+ 		} else {
+ 			if (start >= end) {
+@@ -102,7 +102,7 @@ SYSCALL_DEFINE3(msync, unsigned long, start, size_t, len, int, flags)
+ 		}
+ 	}
+ out_unlock:
+-	up_read(&mm->mmap_sem);
++	up_read_cst(&mm->mmap_sem);
+ out:
+ 	return error ? : unmapped_error;
+ }
+diff --git a/mm/oom_kill.c b/mm/oom_kill.c
+index f10aa53..04608301 100644
+--- a/mm/oom_kill.c
++++ b/mm/oom_kill.c
+@@ -545,7 +545,7 @@ static bool oom_reap_task_mm(struct task_struct *tsk, struct mm_struct *mm)
+ {
+ 	bool ret = true;
+ 
+-	if (!down_read_trylock(&mm->mmap_sem)) {
++	if (!down_read_cst_trylock(&mm->mmap_sem)) {
+ 		trace_skip_task_reaping(tsk->pid);
+ 		return false;
+ 	}
+@@ -576,7 +576,7 @@ static bool oom_reap_task_mm(struct task_struct *tsk, struct mm_struct *mm)
+ out_finish:
+ 	trace_finish_task_reaping(tsk->pid);
+ out_unlock:
+-	up_read(&mm->mmap_sem);
++	up_read_cst(&mm->mmap_sem);
+ 
+ 	return ret;
+ }
+diff --git a/mm/pagewalk.c b/mm/pagewalk.c
+index c3084ff..0232b48 100644
+--- a/mm/pagewalk.c
++++ b/mm/pagewalk.c
+@@ -303,7 +303,7 @@ int walk_page_range(unsigned long start, unsigned long end,
+ 	if (!walk->mm)
+ 		return -EINVAL;
+ 
+-	VM_BUG_ON_MM(!rwsem_is_locked(&walk->mm->mmap_sem), walk->mm);
++	/* VM_BUG_ON_MM(!rwsem_is_locked(&walk->mm->mmap_sem), walk->mm); */
+ 
+ 	vma = find_vma(walk->mm, start);
+ 	do {
+@@ -346,7 +346,7 @@ int walk_page_vma(struct vm_area_struct *vma, struct mm_walk *walk)
+ 	if (!walk->mm)
+ 		return -EINVAL;
+ 
+-	VM_BUG_ON(!rwsem_is_locked(&walk->mm->mmap_sem));
++	/* VM_BUG_ON(!rwsem_is_locked(&walk->mm->mmap_sem)); */
+ 	VM_BUG_ON(!vma);
+ 	walk->vma = vma;
+ 	err = walk_page_test(vma->vm_start, vma->vm_end, walk);
+diff --git a/mm/process_vm_access.c b/mm/process_vm_access.c
+index a447092..f11143b 100644
+--- a/mm/process_vm_access.c
++++ b/mm/process_vm_access.c
+@@ -109,11 +109,11 @@ static int process_vm_rw_single_vec(unsigned long addr,
+ 		 * access remotely because task/mm might not
+ 		 * current/current->mm
+ 		 */
+-		down_read(&mm->mmap_sem);
++		down_read_cst(&mm->mmap_sem);
+ 		pages = get_user_pages_remote(task, mm, pa, pages, flags,
+ 					      process_pages, NULL, &locked);
+ 		if (locked)
+-			up_read(&mm->mmap_sem);
++			up_read_cst(&mm->mmap_sem);
+ 		if (pages <= 0)
+ 			return -EFAULT;
+ 
+diff --git a/mm/shmem.c b/mm/shmem.c
+index 0376c124..b614381 100644
+--- a/mm/shmem.c
++++ b/mm/shmem.c
+@@ -1990,7 +1990,7 @@ static vm_fault_t shmem_fault(struct vm_fault *vmf)
+ 			if ((vmf->flags & FAULT_FLAG_ALLOW_RETRY) &&
+ 			   !(vmf->flags & FAULT_FLAG_RETRY_NOWAIT)) {
+ 				/* It's polite to up mmap_sem if we can */
+-				up_read(&vma->vm_mm->mmap_sem);
++				up_read_cst(&vma->vm_mm->mmap_sem);
+ 				ret = VM_FAULT_RETRY;
+ 			}
+ 
+diff --git a/mm/swapfile.c b/mm/swapfile.c
+index d954b71..3b889bd 100644
+--- a/mm/swapfile.c
++++ b/mm/swapfile.c
+@@ -1942,14 +1942,14 @@ static int unuse_mm(struct mm_struct *mm,
+ 	struct vm_area_struct *vma;
+ 	int ret = 0;
+ 
+-	if (!down_read_trylock(&mm->mmap_sem)) {
++	if (!down_read_cst_trylock(&mm->mmap_sem)) {
+ 		/*
+ 		 * Activate page so shrink_inactive_list is unlikely to unmap
+ 		 * its ptes while lock is dropped, so swapoff can make progress.
+ 		 */
+ 		activate_page(page);
+ 		unlock_page(page);
+-		down_read(&mm->mmap_sem);
++		down_read_cst(&mm->mmap_sem);
+ 		lock_page(page);
+ 	}
+ 	for (vma = mm->mmap; vma; vma = vma->vm_next) {
+@@ -1957,7 +1957,7 @@ static int unuse_mm(struct mm_struct *mm,
+ 			break;
+ 		cond_resched();
+ 	}
+-	up_read(&mm->mmap_sem);
++	up_read_cst(&mm->mmap_sem);
+ 	return (ret < 0)? ret: 0;
+ }
+ 
+diff --git a/mm/util.c b/mm/util.c
+index 9e3ebd2..69dd4b7 100644
+--- a/mm/util.c
++++ b/mm/util.c
+@@ -352,11 +352,11 @@ unsigned long vm_mmap_pgoff(struct file *file, unsigned long addr,
+ 
+ 	ret = security_mmap_file(file, prot, flag);
+ 	if (!ret) {
+-		if (down_write_killable(&mm->mmap_sem))
++		if (down_write_cst_killable(&mm->mmap_sem))
+ 			return -EINTR;
+ 		ret = do_mmap_pgoff(file, addr, len, prot, flag, pgoff,
+ 				    &populate, &uf);
+-		up_write(&mm->mmap_sem);
++		up_write_cst(&mm->mmap_sem);
+ 		userfaultfd_unmap_complete(mm, &uf);
+ 		if (populate)
+ 			mm_populate(ret, populate);
+@@ -751,12 +751,12 @@ int get_cmdline(struct task_struct *task, char *buffer, int buflen)
+ 	if (!mm->arg_end)
+ 		goto out_mm;	/* Shh! No looking before we're done */
+ 
+-	down_read(&mm->mmap_sem);
++	down_read_cst(&mm->mmap_sem);
+ 	arg_start = mm->arg_start;
+ 	arg_end = mm->arg_end;
+ 	env_start = mm->env_start;
+ 	env_end = mm->env_end;
+-	up_read(&mm->mmap_sem);
++	up_read_cst(&mm->mmap_sem);
+ 
+ 	len = arg_end - arg_start;
+ 
+diff --git a/net/ipv4/tcp.c b/net/ipv4/tcp.c
+index 10c6246..9bfe579 100644
+--- a/net/ipv4/tcp.c
++++ b/net/ipv4/tcp.c
+@@ -1763,7 +1763,7 @@ static int tcp_zerocopy_receive(struct sock *sk,
+ 
+ 	sock_rps_record_flow(sk);
+ 
+-	down_read(&current->mm->mmap_sem);
++	down_read_cst(&current->mm->mmap_sem);
+ 
+ 	ret = -EINVAL;
+ 	vma = find_vma(current->mm, address);
+@@ -1813,7 +1813,7 @@ static int tcp_zerocopy_receive(struct sock *sk,
+ 		frags++;
+ 	}
+ out:
+-	up_read(&current->mm->mmap_sem);
++	up_read_cst(&current->mm->mmap_sem);
+ 	if (length) {
+ 		tp->copied_seq = seq;
+ 		tcp_rcv_space_adjust(sk);
+diff --git a/virt/kvm/async_pf.c b/virt/kvm/async_pf.c
+index 23c2519..a359622 100644
+--- a/virt/kvm/async_pf.c
++++ b/virt/kvm/async_pf.c
+@@ -86,11 +86,11 @@ static void async_pf_execute(struct work_struct *work)
+ 	 * mm and might be done in another context, so we must
+ 	 * access remotely.
+ 	 */
+-	down_read(&mm->mmap_sem);
++	down_read_cst(&mm->mmap_sem);
+ 	get_user_pages_remote(NULL, mm, addr, 1, FOLL_WRITE, NULL, NULL,
+ 			&locked);
+ 	if (locked)
+-		up_read(&mm->mmap_sem);
++		up_read_cst(&mm->mmap_sem);
+ 
+ 	kvm_async_page_present_sync(vcpu, apf);
+ 
+diff --git a/virt/kvm/kvm_main.c b/virt/kvm/kvm_main.c
+index f986e31f..903aee5 100644
+--- a/virt/kvm/kvm_main.c
++++ b/virt/kvm/kvm_main.c
+@@ -1252,7 +1252,7 @@ unsigned long kvm_host_page_size(struct kvm *kvm, gfn_t gfn)
+ 	if (kvm_is_error_hva(addr))
+ 		return PAGE_SIZE;
+ 
+-	down_read(&current->mm->mmap_sem);
++	down_read_cst(&current->mm->mmap_sem);
+ 	vma = find_vma(current->mm, addr);
+ 	if (!vma)
+ 		goto out;
+@@ -1260,7 +1260,7 @@ unsigned long kvm_host_page_size(struct kvm *kvm, gfn_t gfn)
+ 	size = vma_kernel_pagesize(vma);
+ 
+ out:
+-	up_read(&current->mm->mmap_sem);
++	up_read_cst(&current->mm->mmap_sem);
+ 
+ 	return size;
+ }
+@@ -1511,7 +1511,7 @@ static kvm_pfn_t hva_to_pfn(unsigned long addr, bool atomic, bool *async,
+ 	if (npages == 1)
+ 		return pfn;
+ 
+-	down_read(&current->mm->mmap_sem);
++	down_read_cst(&current->mm->mmap_sem);
+ 	if (npages == -EHWPOISON ||
+ 	      (!async && check_user_page_hwpoison(addr))) {
+ 		pfn = KVM_PFN_ERR_HWPOISON;
+@@ -1535,7 +1535,7 @@ static kvm_pfn_t hva_to_pfn(unsigned long addr, bool atomic, bool *async,
+ 		pfn = KVM_PFN_ERR_FAULT;
+ 	}
+ exit:
+-	up_read(&current->mm->mmap_sem);
++	up_read_cst(&current->mm->mmap_sem);
+ 	return pfn;
+ }
+ 
+-- 
+2.7.4
+
