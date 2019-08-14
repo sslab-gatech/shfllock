@@ -1,0 +1,44 @@
+#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/sanidhya/fuzzing/afl-test/libjpeg-turbo/jinclude.h
+jconfig.h
+/home/sanidhya/fuzzing/afl-test/libjpeg-turbo/jconfig.h
+stddef.h
+-
+stdlib.h
+-
+sys/types.h
+-
+stdio.h
+-
+strings.h
+-
+string.h
+-
+
+/home/sanidhya/fuzzing/afl-test/libjpeg-turbo/rdjpgcom.c
+jinclude.h
+/home/sanidhya/fuzzing/afl-test/libjpeg-turbo/jinclude.h
+locale.h
+-
+ctype.h
+-
+fcntl.h
+-
+io.h
+-
+SIOUX.h
+-
+console.h
+-
+console.h
+-
+
+jconfig.h
+

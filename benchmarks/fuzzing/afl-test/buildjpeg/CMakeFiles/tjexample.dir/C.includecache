@@ -1,0 +1,22 @@
+#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/sanidhya/fuzzing/afl-test/libjpeg-turbo/tjexample.c
+stdio.h
+-
+stdlib.h
+-
+string.h
+-
+errno.h
+-
+turbojpeg.h
+-
+
+/home/sanidhya/fuzzing/afl-test/libjpeg-turbo/turbojpeg.h
+

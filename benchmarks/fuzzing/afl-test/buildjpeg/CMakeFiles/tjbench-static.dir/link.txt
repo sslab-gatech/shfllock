@@ -1,0 +1,1 @@
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc  -m32 -O3 -DNDEBUG   CMakeFiles/tjbench-static.dir/tjbench.c.o CMakeFiles/tjbench-static.dir/tjutil.c.o  -o tjbench-static -rdynamic libturbojpeg.a -lm 

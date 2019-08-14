@@ -1,0 +1,453 @@
+The system is: Linux - 4.18.0-stock-lkstat - x86_64
+Compiling the C compiler identification source file "CMakeCCompilerId.c" succeeded.
+Compiler: /home/sanidhya/fuzzing/afl-2.52b/afl-gcc 
+Build flags: -m32
+Id flags: 
+
+The output was:
+0
+
+
+Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "a.out"
+
+The C compiler identification is GNU, found in "/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/3.5.1/CompilerIdC/a.out"
+
+Determining if the C compiler works passed with the following output:
+Change Dir: /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_8e9d5/fast"
+/usr/bin/make -f CMakeFiles/cmTC_8e9d5.dir/build.make CMakeFiles/cmTC_8e9d5.dir/build
+make[1]: Entering directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_8e9d5.dir/testCCompiler.c.o
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc    -m32    -o CMakeFiles/cmTC_8e9d5.dir/testCCompiler.c.o   -c /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp/testCCompiler.c
+Linking C executable cmTC_8e9d5
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_8e9d5.dir/link.txt --verbose=1
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc  -m32     CMakeFiles/cmTC_8e9d5.dir/testCCompiler.c.o  -o cmTC_8e9d5 -rdynamic 
+make[1]: Leaving directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+
+
+Detecting C compiler ABI info compiled with the following output:
+Change Dir: /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_7f445/fast"
+/usr/bin/make -f CMakeFiles/cmTC_7f445.dir/build.make CMakeFiles/cmTC_7f445.dir/build
+make[1]: Entering directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_7f445.dir/CMakeCCompilerABI.c.o
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc    -m32    -o CMakeFiles/cmTC_7f445.dir/CMakeCCompilerABI.c.o   -c /usr/share/cmake-3.5/Modules/CMakeCCompilerABI.c
+Linking C executable cmTC_7f445
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_7f445.dir/link.txt --verbose=1
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc  -m32    -v CMakeFiles/cmTC_7f445.dir/CMakeCCompilerABI.c.o  -o cmTC_7f445 -rdynamic  
+Using built-in specs.
+COLLECT_GCC=gcc
+COLLECT_LTO_WRAPPER=/usr/lib/gcc/x86_64-linux-gnu/5/lto-wrapper
+Target: x86_64-linux-gnu
+Configured with: ../src/configure -v --with-pkgversion='Ubuntu 5.4.0-6ubuntu1~16.04.11' --with-bugurl=file:///usr/share/doc/gcc-5/README.Bugs --enable-languages=c,ada,c++,java,go,d,fortran,objc,obj-c++ --prefix=/usr --program-suffix=-5 --enable-shared --enable-linker-build-id --libexecdir=/usr/lib --without-included-gettext --enable-threads=posix --libdir=/usr/lib --enable-nls --with-sysroot=/ --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --with-default-libstdcxx-abi=new --enable-gnu-unique-object --disable-vtable-verify --enable-libmpx --enable-plugin --with-system-zlib --disable-browser-plugin --enable-java-awt=gtk --enable-gtk-cairo --with-java-home=/usr/lib/jvm/java-1.5.0-gcj-5-amd64/jre --enable-java-home --with-jvm-root-dir=/usr/lib/jvm/java-1.5.0-gcj-5-amd64 --with-jvm-jar-dir=/usr/lib/jvm-exports/java-1.5.0-gcj-5-amd64 --with-arch-directory=amd64 --with-ecj-jar=/usr/share/java/eclipse-ecj.jar --enable-objc-gc --enable-multiarch --disable-werror --with-arch-32=i686 --with-abi=m64 --with-multilib-list=m32,m64,mx32 --enable-multilib --with-tune=generic --enable-checking=release --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=x86_64-linux-gnu
+Thread model: posix
+gcc version 5.4.0 20160609 (Ubuntu 5.4.0-6ubuntu1~16.04.11) 
+COMPILER_PATH=/home/sanidhya/fuzzing/afl-2.52b/:/usr/lib/gcc/x86_64-linux-gnu/5/:/usr/lib/gcc/x86_64-linux-gnu/5/:/usr/lib/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/5/:/usr/lib/gcc/x86_64-linux-gnu/
+LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/5/32/:/usr/lib/gcc/x86_64-linux-gnu/5/../../../../lib32/:/lib/../lib32/:/usr/lib/../lib32/:/home/sanidhya/fuzzing/afl-2.52b/:/usr/lib/gcc/x86_64-linux-gnu/5/:/usr/lib/gcc/x86_64-linux-gnu/5/../../../:/lib/:/usr/lib/
+COLLECT_GCC_OPTIONS='-m32' '-v' '-o' 'cmTC_7f445' '-rdynamic' '-B' '/home/sanidhya/fuzzing/afl-2.52b' '-g' '-O3' '-funroll-loops' '-D' '__AFL_COMPILER=1' '-D' 'FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION=1' '-mtune=generic' '-march=i686'
+ /usr/lib/gcc/x86_64-linux-gnu/5/collect2 -plugin /usr/lib/gcc/x86_64-linux-gnu/5/liblto_plugin.so -plugin-opt=/usr/lib/gcc/x86_64-linux-gnu/5/lto-wrapper -plugin-opt=-fresolution=/tmp/cc0nbdVM.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --sysroot=/ --build-id --eh-frame-hdr -m elf_i386 --hash-style=gnu --as-needed -export-dynamic -dynamic-linker /lib/ld-linux.so.2 -z relro -o cmTC_7f445 /usr/lib/gcc/x86_64-linux-gnu/5/../../../../lib32/crt1.o /usr/lib/gcc/x86_64-linux-gnu/5/../../../../lib32/crti.o /usr/lib/gcc/x86_64-linux-gnu/5/32/crtbegin.o -L/usr/lib/gcc/x86_64-linux-gnu/5/32 -L/usr/lib/gcc/x86_64-linux-gnu/5/../../../../lib32 -L/lib/../lib32 -L/usr/lib/../lib32 -L/home/sanidhya/fuzzing/afl-2.52b -L/usr/lib/gcc/x86_64-linux-gnu/5 -L/usr/lib/gcc/x86_64-linux-gnu/5/../../.. CMakeFiles/cmTC_7f445.dir/CMakeCCompilerABI.c.o -lgcc --as-needed -lgcc_s --no-as-needed -lc -lgcc --as-needed -lgcc_s --no-as-needed /usr/lib/gcc/x86_64-linux-gnu/5/32/crtend.o /usr/lib/gcc/x86_64-linux-gnu/5/../../../../lib32/crtn.o
+make[1]: Leaving directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+
+
+Parsed C implicit link information from above output:
+  link line regex: [^( *|.*[/\])(ld|([^/\]+-)?ld|collect2)[^/\]*( |$)]
+  ignore line: [Change Dir: /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp]
+  ignore line: []
+  ignore line: [Run Build Command:"/usr/bin/make" "cmTC_7f445/fast"]
+  ignore line: [/usr/bin/make -f CMakeFiles/cmTC_7f445.dir/build.make CMakeFiles/cmTC_7f445.dir/build]
+  ignore line: [make[1]: Entering directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp']
+  ignore line: [Building C object CMakeFiles/cmTC_7f445.dir/CMakeCCompilerABI.c.o]
+  ignore line: [/home/sanidhya/fuzzing/afl-2.52b/afl-gcc    -m32    -o CMakeFiles/cmTC_7f445.dir/CMakeCCompilerABI.c.o   -c /usr/share/cmake-3.5/Modules/CMakeCCompilerABI.c]
+  ignore line: [Linking C executable cmTC_7f445]
+  ignore line: [/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_7f445.dir/link.txt --verbose=1]
+  ignore line: [/home/sanidhya/fuzzing/afl-2.52b/afl-gcc  -m32    -v CMakeFiles/cmTC_7f445.dir/CMakeCCompilerABI.c.o  -o cmTC_7f445 -rdynamic  ]
+  ignore line: [Using built-in specs.]
+  ignore line: [COLLECT_GCC=gcc]
+  ignore line: [COLLECT_LTO_WRAPPER=/usr/lib/gcc/x86_64-linux-gnu/5/lto-wrapper]
+  ignore line: [Target: x86_64-linux-gnu]
+  ignore line: [Configured with: ../src/configure -v --with-pkgversion='Ubuntu 5.4.0-6ubuntu1~16.04.11' --with-bugurl=file:///usr/share/doc/gcc-5/README.Bugs --enable-languages=c,ada,c++,java,go,d,fortran,objc,obj-c++ --prefix=/usr --program-suffix=-5 --enable-shared --enable-linker-build-id --libexecdir=/usr/lib --without-included-gettext --enable-threads=posix --libdir=/usr/lib --enable-nls --with-sysroot=/ --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --with-default-libstdcxx-abi=new --enable-gnu-unique-object --disable-vtable-verify --enable-libmpx --enable-plugin --with-system-zlib --disable-browser-plugin --enable-java-awt=gtk --enable-gtk-cairo --with-java-home=/usr/lib/jvm/java-1.5.0-gcj-5-amd64/jre --enable-java-home --with-jvm-root-dir=/usr/lib/jvm/java-1.5.0-gcj-5-amd64 --with-jvm-jar-dir=/usr/lib/jvm-exports/java-1.5.0-gcj-5-amd64 --with-arch-directory=amd64 --with-ecj-jar=/usr/share/java/eclipse-ecj.jar --enable-objc-gc --enable-multiarch --disable-werror --with-arch-32=i686 --with-abi=m64 --with-multilib-list=m32,m64,mx32 --enable-multilib --with-tune=generic --enable-checking=release --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=x86_64-linux-gnu]
+  ignore line: [Thread model: posix]
+  ignore line: [gcc version 5.4.0 20160609 (Ubuntu 5.4.0-6ubuntu1~16.04.11) ]
+  ignore line: [COMPILER_PATH=/home/sanidhya/fuzzing/afl-2.52b/:/usr/lib/gcc/x86_64-linux-gnu/5/:/usr/lib/gcc/x86_64-linux-gnu/5/:/usr/lib/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/5/:/usr/lib/gcc/x86_64-linux-gnu/]
+  ignore line: [LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/5/32/:/usr/lib/gcc/x86_64-linux-gnu/5/../../../../lib32/:/lib/../lib32/:/usr/lib/../lib32/:/home/sanidhya/fuzzing/afl-2.52b/:/usr/lib/gcc/x86_64-linux-gnu/5/:/usr/lib/gcc/x86_64-linux-gnu/5/../../../:/lib/:/usr/lib/]
+  ignore line: [COLLECT_GCC_OPTIONS='-m32' '-v' '-o' 'cmTC_7f445' '-rdynamic' '-B' '/home/sanidhya/fuzzing/afl-2.52b' '-g' '-O3' '-funroll-loops' '-D' '__AFL_COMPILER=1' '-D' 'FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION=1' '-mtune=generic' '-march=i686']
+  link line: [ /usr/lib/gcc/x86_64-linux-gnu/5/collect2 -plugin /usr/lib/gcc/x86_64-linux-gnu/5/liblto_plugin.so -plugin-opt=/usr/lib/gcc/x86_64-linux-gnu/5/lto-wrapper -plugin-opt=-fresolution=/tmp/cc0nbdVM.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --sysroot=/ --build-id --eh-frame-hdr -m elf_i386 --hash-style=gnu --as-needed -export-dynamic -dynamic-linker /lib/ld-linux.so.2 -z relro -o cmTC_7f445 /usr/lib/gcc/x86_64-linux-gnu/5/../../../../lib32/crt1.o /usr/lib/gcc/x86_64-linux-gnu/5/../../../../lib32/crti.o /usr/lib/gcc/x86_64-linux-gnu/5/32/crtbegin.o -L/usr/lib/gcc/x86_64-linux-gnu/5/32 -L/usr/lib/gcc/x86_64-linux-gnu/5/../../../../lib32 -L/lib/../lib32 -L/usr/lib/../lib32 -L/home/sanidhya/fuzzing/afl-2.52b -L/usr/lib/gcc/x86_64-linux-gnu/5 -L/usr/lib/gcc/x86_64-linux-gnu/5/../../.. CMakeFiles/cmTC_7f445.dir/CMakeCCompilerABI.c.o -lgcc --as-needed -lgcc_s --no-as-needed -lc -lgcc --as-needed -lgcc_s --no-as-needed /usr/lib/gcc/x86_64-linux-gnu/5/32/crtend.o /usr/lib/gcc/x86_64-linux-gnu/5/../../../../lib32/crtn.o]
+    arg [/usr/lib/gcc/x86_64-linux-gnu/5/collect2] ==> ignore
+    arg [-plugin] ==> ignore
+    arg [/usr/lib/gcc/x86_64-linux-gnu/5/liblto_plugin.so] ==> ignore
+    arg [-plugin-opt=/usr/lib/gcc/x86_64-linux-gnu/5/lto-wrapper] ==> ignore
+    arg [-plugin-opt=-fresolution=/tmp/cc0nbdVM.res] ==> ignore
+    arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
+    arg [-plugin-opt=-pass-through=-lgcc_s] ==> ignore
+    arg [-plugin-opt=-pass-through=-lc] ==> ignore
+    arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
+    arg [-plugin-opt=-pass-through=-lgcc_s] ==> ignore
+    arg [--sysroot=/] ==> ignore
+    arg [--build-id] ==> ignore
+    arg [--eh-frame-hdr] ==> ignore
+    arg [-m] ==> ignore
+    arg [elf_i386] ==> ignore
+    arg [--hash-style=gnu] ==> ignore
+    arg [--as-needed] ==> ignore
+    arg [-export-dynamic] ==> ignore
+    arg [-dynamic-linker] ==> ignore
+    arg [/lib/ld-linux.so.2] ==> ignore
+    arg [-zrelro] ==> ignore
+    arg [-o] ==> ignore
+    arg [cmTC_7f445] ==> ignore
+    arg [/usr/lib/gcc/x86_64-linux-gnu/5/../../../../lib32/crt1.o] ==> ignore
+    arg [/usr/lib/gcc/x86_64-linux-gnu/5/../../../../lib32/crti.o] ==> ignore
+    arg [/usr/lib/gcc/x86_64-linux-gnu/5/32/crtbegin.o] ==> ignore
+    arg [-L/usr/lib/gcc/x86_64-linux-gnu/5/32] ==> dir [/usr/lib/gcc/x86_64-linux-gnu/5/32]
+    arg [-L/usr/lib/gcc/x86_64-linux-gnu/5/../../../../lib32] ==> dir [/usr/lib/gcc/x86_64-linux-gnu/5/../../../../lib32]
+    arg [-L/lib/../lib32] ==> dir [/lib/../lib32]
+    arg [-L/usr/lib/../lib32] ==> dir [/usr/lib/../lib32]
+    arg [-L/home/sanidhya/fuzzing/afl-2.52b] ==> dir [/home/sanidhya/fuzzing/afl-2.52b]
+    arg [-L/usr/lib/gcc/x86_64-linux-gnu/5] ==> dir [/usr/lib/gcc/x86_64-linux-gnu/5]
+    arg [-L/usr/lib/gcc/x86_64-linux-gnu/5/../../..] ==> dir [/usr/lib/gcc/x86_64-linux-gnu/5/../../..]
+    arg [CMakeFiles/cmTC_7f445.dir/CMakeCCompilerABI.c.o] ==> ignore
+    arg [-lgcc] ==> lib [gcc]
+    arg [--as-needed] ==> ignore
+    arg [-lgcc_s] ==> lib [gcc_s]
+    arg [--no-as-needed] ==> ignore
+    arg [-lc] ==> lib [c]
+    arg [-lgcc] ==> lib [gcc]
+    arg [--as-needed] ==> ignore
+    arg [-lgcc_s] ==> lib [gcc_s]
+    arg [--no-as-needed] ==> ignore
+    arg [/usr/lib/gcc/x86_64-linux-gnu/5/32/crtend.o] ==> ignore
+    arg [/usr/lib/gcc/x86_64-linux-gnu/5/../../../../lib32/crtn.o] ==> ignore
+  remove lib [gcc]
+  remove lib [gcc_s]
+  remove lib [gcc]
+  remove lib [gcc_s]
+  collapse library dir [/usr/lib/gcc/x86_64-linux-gnu/5/32] ==> [/usr/lib/gcc/x86_64-linux-gnu/5/32]
+  collapse library dir [/usr/lib/gcc/x86_64-linux-gnu/5/../../../../lib32] ==> [/usr/lib32]
+  collapse library dir [/lib/../lib32] ==> [/lib32]
+  collapse library dir [/usr/lib/../lib32] ==> [/usr/lib32]
+  collapse library dir [/home/sanidhya/fuzzing/afl-2.52b] ==> [/home/sanidhya/fuzzing/afl-2.52b]
+  collapse library dir [/usr/lib/gcc/x86_64-linux-gnu/5] ==> [/usr/lib/gcc/x86_64-linux-gnu/5]
+  collapse library dir [/usr/lib/gcc/x86_64-linux-gnu/5/../../..] ==> [/usr/lib]
+  implicit libs: [c]
+  implicit dirs: [/usr/lib/gcc/x86_64-linux-gnu/5/32;/usr/lib32;/lib32;/home/sanidhya/fuzzing/afl-2.52b;/usr/lib/gcc/x86_64-linux-gnu/5;/usr/lib]
+  implicit fwks: []
+
+
+
+
+Detecting C [-std=c11] compiler features compiled with the following output:
+Change Dir: /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_960bc/fast"
+/usr/bin/make -f CMakeFiles/cmTC_960bc.dir/build.make CMakeFiles/cmTC_960bc.dir/build
+make[1]: Entering directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_960bc.dir/feature_tests.c.o
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc    -m32    -std=c11 -o CMakeFiles/cmTC_960bc.dir/feature_tests.c.o   -c /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/feature_tests.c
+Linking C executable cmTC_960bc
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_960bc.dir/link.txt --verbose=1
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc  -m32     CMakeFiles/cmTC_960bc.dir/feature_tests.c.o  -o cmTC_960bc -rdynamic 
+make[1]: Leaving directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+
+
+    Feature record: C_FEATURE:1c_function_prototypes
+    Feature record: C_FEATURE:1c_restrict
+    Feature record: C_FEATURE:1c_static_assert
+    Feature record: C_FEATURE:1c_variadic_macros
+
+
+Detecting C [-std=c99] compiler features compiled with the following output:
+Change Dir: /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_a734e/fast"
+/usr/bin/make -f CMakeFiles/cmTC_a734e.dir/build.make CMakeFiles/cmTC_a734e.dir/build
+make[1]: Entering directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_a734e.dir/feature_tests.c.o
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc    -m32    -std=c99 -o CMakeFiles/cmTC_a734e.dir/feature_tests.c.o   -c /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/feature_tests.c
+Linking C executable cmTC_a734e
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_a734e.dir/link.txt --verbose=1
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc  -m32     CMakeFiles/cmTC_a734e.dir/feature_tests.c.o  -o cmTC_a734e -rdynamic 
+make[1]: Leaving directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+
+
+    Feature record: C_FEATURE:1c_function_prototypes
+    Feature record: C_FEATURE:1c_restrict
+    Feature record: C_FEATURE:0c_static_assert
+    Feature record: C_FEATURE:1c_variadic_macros
+
+
+Detecting C [-std=c90] compiler features compiled with the following output:
+Change Dir: /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_65353/fast"
+/usr/bin/make -f CMakeFiles/cmTC_65353.dir/build.make CMakeFiles/cmTC_65353.dir/build
+make[1]: Entering directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_65353.dir/feature_tests.c.o
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc    -m32    -std=c90 -o CMakeFiles/cmTC_65353.dir/feature_tests.c.o   -c /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/feature_tests.c
+Linking C executable cmTC_65353
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_65353.dir/link.txt --verbose=1
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc  -m32     CMakeFiles/cmTC_65353.dir/feature_tests.c.o  -o cmTC_65353 -rdynamic 
+make[1]: Leaving directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+
+
+    Feature record: C_FEATURE:1c_function_prototypes
+    Feature record: C_FEATURE:0c_restrict
+    Feature record: C_FEATURE:0c_static_assert
+    Feature record: C_FEATURE:0c_variadic_macros
+Determining if the include file sys/types.h exists passed with the following output:
+Change Dir: /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_aad1f/fast"
+/usr/bin/make -f CMakeFiles/cmTC_aad1f.dir/build.make CMakeFiles/cmTC_aad1f.dir/build
+make[1]: Entering directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_aad1f.dir/CheckIncludeFile.c.o
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc    -m32    -o CMakeFiles/cmTC_aad1f.dir/CheckIncludeFile.c.o   -c /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp/CheckIncludeFile.c
+Linking C executable cmTC_aad1f
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_aad1f.dir/link.txt --verbose=1
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc  -m32     CMakeFiles/cmTC_aad1f.dir/CheckIncludeFile.c.o  -o cmTC_aad1f -rdynamic 
+make[1]: Leaving directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+
+
+Determining if the include file stdint.h exists passed with the following output:
+Change Dir: /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_7832e/fast"
+/usr/bin/make -f CMakeFiles/cmTC_7832e.dir/build.make CMakeFiles/cmTC_7832e.dir/build
+make[1]: Entering directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_7832e.dir/CheckIncludeFile.c.o
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc    -m32    -o CMakeFiles/cmTC_7832e.dir/CheckIncludeFile.c.o   -c /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp/CheckIncludeFile.c
+Linking C executable cmTC_7832e
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_7832e.dir/link.txt --verbose=1
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc  -m32     CMakeFiles/cmTC_7832e.dir/CheckIncludeFile.c.o  -o cmTC_7832e -rdynamic 
+make[1]: Leaving directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+
+
+Determining if the include file stddef.h exists passed with the following output:
+Change Dir: /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_32d51/fast"
+/usr/bin/make -f CMakeFiles/cmTC_32d51.dir/build.make CMakeFiles/cmTC_32d51.dir/build
+make[1]: Entering directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_32d51.dir/CheckIncludeFile.c.o
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc    -m32    -o CMakeFiles/cmTC_32d51.dir/CheckIncludeFile.c.o   -c /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp/CheckIncludeFile.c
+Linking C executable cmTC_32d51
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_32d51.dir/link.txt --verbose=1
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc  -m32     CMakeFiles/cmTC_32d51.dir/CheckIncludeFile.c.o  -o cmTC_32d51 -rdynamic 
+make[1]: Leaving directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+
+
+Determining size of size_t passed with the following output:
+Change Dir: /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_38e96/fast"
+/usr/bin/make -f CMakeFiles/cmTC_38e96.dir/build.make CMakeFiles/cmTC_38e96.dir/build
+make[1]: Entering directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_38e96.dir/SIZE_T.c.o
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc    -m32    -o CMakeFiles/cmTC_38e96.dir/SIZE_T.c.o   -c /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CheckTypeSize/SIZE_T.c
+Linking C executable cmTC_38e96
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_38e96.dir/link.txt --verbose=1
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc  -m32     CMakeFiles/cmTC_38e96.dir/SIZE_T.c.o  -o cmTC_38e96 -rdynamic 
+make[1]: Leaving directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+
+
+Determining size of unsigned long passed with the following output:
+Change Dir: /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_bd9af/fast"
+/usr/bin/make -f CMakeFiles/cmTC_bd9af.dir/build.make CMakeFiles/cmTC_bd9af.dir/build
+make[1]: Entering directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_bd9af.dir/UNSIGNED_LONG.c.o
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc    -m32    -o CMakeFiles/cmTC_bd9af.dir/UNSIGNED_LONG.c.o   -c /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CheckTypeSize/UNSIGNED_LONG.c
+Linking C executable cmTC_bd9af
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_bd9af.dir/link.txt --verbose=1
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc  -m32     CMakeFiles/cmTC_bd9af.dir/UNSIGNED_LONG.c.o  -o cmTC_bd9af -rdynamic 
+make[1]: Leaving directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+
+
+Performing C SOURCE FILE Test HAVE_BUILTIN_CTZL succeeded with the following output:
+Change Dir: /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_bfbab/fast"
+/usr/bin/make -f CMakeFiles/cmTC_bfbab.dir/build.make CMakeFiles/cmTC_bfbab.dir/build
+make[1]: Entering directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_bfbab.dir/src.c.o
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc    -m32 -DHAVE_BUILTIN_CTZL   -o CMakeFiles/cmTC_bfbab.dir/src.c.o   -c /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_bfbab
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_bfbab.dir/link.txt --verbose=1
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc  -m32 -DHAVE_BUILTIN_CTZL    CMakeFiles/cmTC_bfbab.dir/src.c.o  -o cmTC_bfbab -rdynamic 
+make[1]: Leaving directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+
+Source file was:
+int main(int argc, char **argv) { unsigned long a = argc;  return __builtin_ctzl(a); }
+Determining if files locale.h exist passed with the following output:
+Change Dir: /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_25816/fast"
+/usr/bin/make -f CMakeFiles/cmTC_25816.dir/build.make CMakeFiles/cmTC_25816.dir/build
+make[1]: Entering directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_25816.dir/CheckIncludeFiles.c.o
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc    -m32    -o CMakeFiles/cmTC_25816.dir/CheckIncludeFiles.c.o   -c /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp/CheckIncludeFiles.c
+Linking C executable cmTC_25816
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_25816.dir/link.txt --verbose=1
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc  -m32     CMakeFiles/cmTC_25816.dir/CheckIncludeFiles.c.o  -o cmTC_25816 -rdynamic 
+make[1]: Leaving directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+
+
+Determining if files stdlib.h exist passed with the following output:
+Change Dir: /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_1393a/fast"
+/usr/bin/make -f CMakeFiles/cmTC_1393a.dir/build.make CMakeFiles/cmTC_1393a.dir/build
+make[1]: Entering directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_1393a.dir/CheckIncludeFiles.c.o
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc    -m32    -o CMakeFiles/cmTC_1393a.dir/CheckIncludeFiles.c.o   -c /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp/CheckIncludeFiles.c
+Linking C executable cmTC_1393a
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_1393a.dir/link.txt --verbose=1
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc  -m32     CMakeFiles/cmTC_1393a.dir/CheckIncludeFiles.c.o  -o cmTC_1393a -rdynamic 
+make[1]: Leaving directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+
+
+Determining if files sys/types.h exist passed with the following output:
+Change Dir: /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_ce3cf/fast"
+/usr/bin/make -f CMakeFiles/cmTC_ce3cf.dir/build.make CMakeFiles/cmTC_ce3cf.dir/build
+make[1]: Entering directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_ce3cf.dir/CheckIncludeFiles.c.o
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc    -m32    -o CMakeFiles/cmTC_ce3cf.dir/CheckIncludeFiles.c.o   -c /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp/CheckIncludeFiles.c
+Linking C executable cmTC_ce3cf
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_ce3cf.dir/link.txt --verbose=1
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc  -m32     CMakeFiles/cmTC_ce3cf.dir/CheckIncludeFiles.c.o  -o cmTC_ce3cf -rdynamic 
+make[1]: Leaving directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+
+
+Determining if the memset exist passed with the following output:
+Change Dir: /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_a353c/fast"
+/usr/bin/make -f CMakeFiles/cmTC_a353c.dir/build.make CMakeFiles/cmTC_a353c.dir/build
+make[1]: Entering directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_a353c.dir/CheckSymbolExists.c.o
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc    -m32    -o CMakeFiles/cmTC_a353c.dir/CheckSymbolExists.c.o   -c /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp/CheckSymbolExists.c
+Linking C executable cmTC_a353c
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_a353c.dir/link.txt --verbose=1
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc  -m32     CMakeFiles/cmTC_a353c.dir/CheckSymbolExists.c.o  -o cmTC_a353c -rdynamic 
+make[1]: Leaving directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+
+File /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp/CheckSymbolExists.c:
+/* */
+#include <string.h>
+
+int main(int argc, char** argv)
+{
+  (void)argv;
+#ifndef memset
+  return ((int*)(&memset))[argc];
+#else
+  (void)argc;
+  return 0;
+#endif
+}
+
+Determining if the memcpy exist passed with the following output:
+Change Dir: /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_76d58/fast"
+/usr/bin/make -f CMakeFiles/cmTC_76d58.dir/build.make CMakeFiles/cmTC_76d58.dir/build
+make[1]: Entering directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_76d58.dir/CheckSymbolExists.c.o
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc    -m32    -o CMakeFiles/cmTC_76d58.dir/CheckSymbolExists.c.o   -c /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp/CheckSymbolExists.c
+Linking C executable cmTC_76d58
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_76d58.dir/link.txt --verbose=1
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc  -m32     CMakeFiles/cmTC_76d58.dir/CheckSymbolExists.c.o  -o cmTC_76d58 -rdynamic 
+make[1]: Leaving directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+
+File /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp/CheckSymbolExists.c:
+/* */
+#include <string.h>
+
+int main(int argc, char** argv)
+{
+  (void)argv;
+#ifndef memcpy
+  return ((int*)(&memcpy))[argc];
+#else
+  (void)argc;
+  return 0;
+#endif
+}
+
+Determining size of unsigned char passed with the following output:
+Change Dir: /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_12e89/fast"
+/usr/bin/make -f CMakeFiles/cmTC_12e89.dir/build.make CMakeFiles/cmTC_12e89.dir/build
+make[1]: Entering directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_12e89.dir/UNSIGNED_CHAR.c.o
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc    -m32    -o CMakeFiles/cmTC_12e89.dir/UNSIGNED_CHAR.c.o   -c /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CheckTypeSize/UNSIGNED_CHAR.c
+Linking C executable cmTC_12e89
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_12e89.dir/link.txt --verbose=1
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc  -m32     CMakeFiles/cmTC_12e89.dir/UNSIGNED_CHAR.c.o  -o cmTC_12e89 -rdynamic 
+make[1]: Leaving directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+
+
+Determining size of unsigned short passed with the following output:
+Change Dir: /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_7d2c2/fast"
+/usr/bin/make -f CMakeFiles/cmTC_7d2c2.dir/build.make CMakeFiles/cmTC_7d2c2.dir/build
+make[1]: Entering directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_7d2c2.dir/UNSIGNED_SHORT.c.o
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc    -m32    -o CMakeFiles/cmTC_7d2c2.dir/UNSIGNED_SHORT.c.o   -c /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CheckTypeSize/UNSIGNED_SHORT.c
+Linking C executable cmTC_7d2c2
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_7d2c2.dir/link.txt --verbose=1
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc  -m32     CMakeFiles/cmTC_7d2c2.dir/UNSIGNED_SHORT.c.o  -o cmTC_7d2c2 -rdynamic 
+make[1]: Leaving directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+
+
+Performing C SOURCE FILE Test INCOMPLETE_TYPES succeeded with the following output:
+Change Dir: /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_b83cb/fast"
+/usr/bin/make -f CMakeFiles/cmTC_b83cb.dir/build.make CMakeFiles/cmTC_b83cb.dir/build
+make[1]: Entering directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_b83cb.dir/src.c.o
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc    -m32 -DINCOMPLETE_TYPES   -o CMakeFiles/cmTC_b83cb.dir/src.c.o   -c /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_b83cb
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_b83cb.dir/link.txt --verbose=1
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc  -m32 -DINCOMPLETE_TYPES    CMakeFiles/cmTC_b83cb.dir/src.c.o  -o cmTC_b83cb -rdynamic 
+make[1]: Leaving directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+
+Source file was:
+int main(void) { typedef struct undefined_structure *undef_struct_ptr;  undef_struct_ptr ptr = 0;  return ptr != 0; }
+Performing C SOURCE FILE Test INLINE_WORKS succeeded with the following output:
+Change Dir: /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_3e200/fast"
+/usr/bin/make -f CMakeFiles/cmTC_3e200.dir/build.make CMakeFiles/cmTC_3e200.dir/build
+make[1]: Entering directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_3e200.dir/src.c.o
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc    -m32 -DINLINE_WORKS   -o CMakeFiles/cmTC_3e200.dir/src.c.o   -c /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_3e200
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_3e200.dir/link.txt --verbose=1
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc  -m32 -DINLINE_WORKS    CMakeFiles/cmTC_3e200.dir/src.c.o  -o cmTC_3e200 -rdynamic 
+make[1]: Leaving directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+
+Source file was:
+__inline__ __attribute__((always_inline)) static int foo(void) { return 0; } int main(void) { return foo(); }
+Performing C SOURCE FILE Test HAVE_VERSION_SCRIPT succeeded with the following output:
+Change Dir: /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_eff7d/fast"
+/usr/bin/make -f CMakeFiles/cmTC_eff7d.dir/build.make CMakeFiles/cmTC_eff7d.dir/build
+make[1]: Entering directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_eff7d.dir/src.c.o
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc    -m32 -DHAVE_VERSION_SCRIPT -Wl,--version-script,/home/sanidhya/fuzzing/afl-test/buildjpeg/conftest.map   -o CMakeFiles/cmTC_eff7d.dir/src.c.o   -c /home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_eff7d
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_eff7d.dir/link.txt --verbose=1
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc  -m32 -DHAVE_VERSION_SCRIPT -Wl,--version-script,/home/sanidhya/fuzzing/afl-test/buildjpeg/conftest.map    CMakeFiles/cmTC_eff7d.dir/src.c.o  -o cmTC_eff7d -rdynamic 
+make[1]: Leaving directory '/home/sanidhya/fuzzing/afl-test/buildjpeg/CMakeFiles/CMakeTmp'
+
+Source file was:
+int main(void) { return 0; }

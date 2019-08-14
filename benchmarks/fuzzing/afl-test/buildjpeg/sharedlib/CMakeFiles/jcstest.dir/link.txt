@@ -1,0 +1,1 @@
+/home/sanidhya/fuzzing/afl-2.52b/afl-gcc  -m32 -O3 -DNDEBUG   CMakeFiles/jcstest.dir/__/jcstest.c.o  -o ../jcstest -rdynamic ../libjpeg.so.62.3.0 -Wl,-rpath,/home/sanidhya/fuzzing/afl-test/buildjpeg 
