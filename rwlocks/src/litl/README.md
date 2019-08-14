@@ -74,6 +74,11 @@ The library uses `LD_PRELOAD` to intercept calls to most of the `pthread_mutex_*
 | **Ticket-EPFL** | [MCS] | original (spin) | ticket-ls | From libslock |
 | **TTAS** | [AND] | original (spin) | ttas | |
 | **TTAS-EPFL** | [AND] | original (spin) | ttas-ls | From libslock |
+| **CNA** | [NUMA-MCS] | original (spin) | cna | From Eurosys 2019 paper |
+| **AQS** | [NUMA-MCS] | original (spin) | non-block shfllock | ShflLock paper |
+| **AQS-WO-NODE** | [NUMA-MCS] | spin | non-block shfllock wo node | ShflLock paper |
+| **AQM** | [NUMA-MUT] | spin_then_park | blocking shfllock | ShflLock paper |
+| **AQM-WO-NODE** | [NUMA-MUT] | spin_then_park | blocking shfllock wo node | ShflLock paper |
 
 Note that the pthread-adaptive and pthread-interpose wrappers are provided only for fair comparison with the other algorithms (i.e., to introduce the same library interposition overhead).
 
