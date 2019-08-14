@@ -15,7 +15,7 @@ and NUMA-aware blocking rwlock.
 - We use Ubuntu 16.04 but with our versions of kernels for testing purposes.
 
 ### Required programs
-- We use the following programs for the evaluation
+- We use the following programs for evaluation
   - Fxmark: file system micro-benchmarking in the kernelspace
   - lock1: This benchmark stresses the kernel spinlock and is part of the will-it-scale benchmark suite
   - Exim: mail server to stress kernelspace locks
@@ -34,8 +34,16 @@ and NUMA-aware blocking rwlock.
   $ git clone https://github.com/sslab-gatech/vbench
   $ git clone https://github.com/sslab-gatech/fxmark
 ```
-- 
-
+- We use the 4 benchmarks from Fxmark and 2 from Vbench.
+- Fxmark:
+  - MWCM
+  - MWRL
+  - MWRM
+  - MRDM
+- Vbench:
+  - Exim
+  - Metis
+- AFL: Follow the README.md in the fuzzing directory
 
 ### Userspace Benchmark
 
