@@ -3,12 +3,10 @@ BDIR ?= $(CURDIR)/build
 BDIR_MAKEFILE ?= $(BDIR)/Makefile
 
 STRESSMOD = ht
-# STRESSMOD = stress
 
 obj-m += $(STRESSMOD).o
 
 $(STRESSMOD)-objs := rcuht.o
-# $(STRESSMOD)-objs := sync-stresser.o
 
 $(STRESSMOD)-objs += locks/qspinlock.o # Linux's qspinlock implementation
 $(STRESSMOD)-objs += locks/aqs.o # Our implementation
@@ -22,7 +20,6 @@ $(STRESSMOD)-objs += locks/rwaqs_rp_v1.o
 $(STRESSMOD)-objs += locks/cmcsmcsrw.o
 $(STRESSMOD)-objs += locks/cna.o
 $(STRESSMOD)-objs += locks/rwaqm.o
-# $(STRESSMOD)-objs += locks/rwaqmevlv.o
 
 ccflags-y := -DKERNEL_SYNCSTRESS -I$(src)/include/ -I$(src)/spinlock/
 
