@@ -1,1 +1,2 @@
-Placeholder for rwlock implementations
+- Placeholder for the `litl` code
+- Go the `src/litl` folder for more information
