@@ -1,27 +1,10 @@
 #!/bin/bash
 
-# sudo insmod build/ht.ko reader_type=$1 writer_type=$1 ro=0 rw=80
-# sleep 10
-# sudo rmmod ht
-set -x
 locks=(table_spinlock table_aqs table_cna table_mutex table_aqm_mutex_fp \
        table_aqm_mutex_lnuma table_aqm_mutex_rnuma table_aqm_mutex_nfp \
        table_rwlock table_rwsem table_cmcsmcs)
 
-locks=(table_aqm_mutex_fp \
-       table_aqm_mutex_lnuma table_aqm_mutex_rnuma table_aqm_mutex_nfp)
-
-# locks=(table_mutex)
-#locks=(table_rwsem table_rwaqm)
-# locks=(table_rwaqm)
-# locks=(table_aqs)
-# locks=(table_aqm_mutex_rnuma table_aqm_mutex_nfp)
-locks=(table_spinlock table_aqs)
-
-# cores=(1 2 4 12 24 48 96 120 144 168 192 384 576 768)
 cores=(1 2 4 12 24 48 96 120 144 168 192)
-# cores=(48 96 120 144 168 192)
-# cores=(384 576 768)
 
 rw_writes=1
 rw_total=100

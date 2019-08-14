@@ -24,7 +24,7 @@ and NUMA-aware blocking rwlock.
   - Dedup: Parsec benchmark that stresses lock allocation in the usersapce
   - Streamcluster: Parsec benchmark that has about 40% of `trylock` calls in the userspace
   - Leveldb: Database benchmark that stresses a single lock in the userspace
-  - Extended version of RCU-table benchmark, used for nano-benchmarking locks. Please check the `kernel-syncstress` folder.
+  - Extended version of RCU-table benchmark, used for nano-benchmarking locks.
 
 
 ### Kernelspace Benchmark
@@ -34,7 +34,7 @@ and NUMA-aware blocking rwlock.
   $ git clone https://github.com/sslab-gatech/vbench
   $ git clone https://github.com/sslab-gatech/fxmark
 ```
-- We use the 4 benchmarks from Fxmark and 2 from Vbench.
+- We use four benchmarks from Fxmark and two from Vbench.
 - Fxmark:
   - MWCM
   - MWRL
@@ -44,10 +44,11 @@ and NUMA-aware blocking rwlock.
   - Exim
   - Metis
 - AFL: Follow the README.md in the fuzzing directory
+- Nanobenchmark: Please refer to the `kernel-syncstress` for more information.
 
 ### Userspace Benchmark
 
-
+- We extend the `Litl` framework (`rwlocks/src/litl/`) and use the `LD_PRELOAD` for usersapce benchmarks.
 
 ### Contact
 - Sanidhya Kashyap (sanidhya@gatech.edu)
