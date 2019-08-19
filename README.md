@@ -73,6 +73,8 @@ make -C ulocks/src/litl
 
 - For Leveldb, follow `Benchmark.md` in the `benchmarks/leveldb-1.20` folder.
 
+- For Dedup and Streamcluster, follow the README.md in the `benchmarks/parsec` folder.
+
 
 ### Contact
 - Sanidhya Kashyap (sanidhya@gatech.edu)
