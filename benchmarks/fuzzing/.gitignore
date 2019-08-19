@@ -1,0 +1,7 @@
+afl/afl-analyze
+afl/afl-fuzz
+afl/afl-gcc
+afl/afl-gotcpu
+afl/afl-showmap
+afl/afl-tmin
+afl/my-afl-as

@@ -19,7 +19,7 @@ v=$(($1 - 1))
 echo $v
 for i in `seq 0 $v`
 do
-        ../afl/afl-fuzz -i $input \
+        ./afl/afl-fuzz -i $input \
                 -o $output -S fuzzer$i \
                 -u $i/$1 \
                 jpeg-9b/.libs/lt-djpeg > /dev/null &
