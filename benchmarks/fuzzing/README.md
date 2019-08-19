@@ -1,4 +1,4 @@
-### AFL
+# AFL
 
 - We use libjpeg as a fuzzing target, which is in the `afl-test` folder.
 
