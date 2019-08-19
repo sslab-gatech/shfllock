@@ -34,12 +34,22 @@ and NUMA-aware blocking rwlock.
   $ git clone https://github.com/sslab-gatech/vbench
   $ git clone https://github.com/sslab-gatech/fxmark
 ```
-- We use four benchmarks from Fxmark and two from Vbench.
-- Fxmark:
+
+## Fxmark
+
+- We use the following benchmarks for evaluating all types of locks
   - MWCM
   - MWRL
   - MWRM
   - MRDM
+
+- We use following settings for our evaluation:
+```python
+    self.DIRECTIOS = ["bufferedio"]
+    self.MEDIA_TYPES = ["mem"]
+    self.FS_TYPES = ["tmpfs"]
+```
+
 - Vbench:
   - Exim
   - Metis
