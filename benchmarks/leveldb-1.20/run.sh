@@ -2,10 +2,9 @@
 
 # $1 --> number of threads
 # $2 --> millisecond
-# for the qspinlock code, run the following:
 #db_bench --benchmarks=readrandom --threads=$1 --num=10 --time_ms=$2 2>&1 | grep readrandom
 set -x
-LOCK_DIR=/home/sanidhya/research/numa-qspinlock/src/rwlocks/src/litl
+LOCK_DIR=./../../ulocks/src/litl
 
 LOCKS=(libmcs_spinlock.sh libhmcs_original.sh \
        libaqs_spinlock.sh libcbomcs_spinlock.sh \

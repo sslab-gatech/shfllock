@@ -1,7 +1,7 @@
 Scalable and Practical Locking with *Shuffling*
 ===============================================
 
-### Paper
+## Paper
 * [Scalable And Practical Locking with Shuffling (SOSP 2019)]()
 
 ### Overview
@@ -11,7 +11,7 @@ such as NUMA-awareness, or blocking. We implement three locking
 protocols: NUMA-aware spinlock, NUMA-aware blocking mutex,
 and NUMA-aware blocking rwlock.
 
-### Tested Environment
+## Tested Environment
 - We use Ubuntu 16.04 but with our versions of kernels for testing purposes.
 
 ### Required programs
@@ -35,7 +35,7 @@ and NUMA-aware blocking rwlock.
   $ git clone https://github.com/sslab-gatech/fxmark
 ```
 
-## Fxmark
+#### Fxmark
 
 - We use the following benchmarks for evaluating all types of locks
   - MWCM
@@ -50,7 +50,7 @@ and NUMA-aware blocking rwlock.
     self.FS_TYPES = ["tmpfs"]
 ```
 
-## Vbench
+#### Vbench
 
 - We use the following benchmarks from Vbench:
   - Exim
@@ -64,7 +64,15 @@ and NUMA-aware blocking rwlock.
 
 ### Userspace Benchmark
 
-- We extend the `Litl` framework (`rwlocks/src/litl/`) and use the `LD_PRELOAD` for usersapce benchmarks.
+- We extend the `Litl` framework (`ulocks/src/litl/`) and use the `LD_PRELOAD` for usersapce benchmarks.
+
+- Compile the `Litl` framework as follows:
+```bash
+make -C ulocks/src/litl
+```
+
+- For Leveldb, follow `Benchmark.md` in the `benchmarks/leveldb-1.20` folder.
+
 
 ### Contact
 - Sanidhya Kashyap (sanidhya@gatech.edu)
