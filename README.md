@@ -60,7 +60,7 @@ and NUMA-aware blocking rwlock.
 
 - AFL: Please follow the README.md in the `benchmarks/fuzzing` directory
 
-- Nanobenchmark: Please refer to the `benchmarks/kernel-syncstress`.
+- Nano-benchmark: Please refer to the `benchmarks/kernel-syncstress`.
 
 ### Userspace Benchmark
 

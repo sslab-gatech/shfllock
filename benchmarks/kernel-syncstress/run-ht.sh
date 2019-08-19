@@ -2,7 +2,7 @@
 
 locks=(table_spinlock table_aqs table_aqm_mutex_fp \
        table_aqm_mutex_lnuma table_aqm_mutex_rnuma table_aqm_mutex_nfp \
-       table_rwlock table_rwsem table_cmcsmcs)
+       table_rwlock table_rwsem table_rwaqm)
 
 cores=(1 2 4 12 24 48 96 120 144 168 192)
 
