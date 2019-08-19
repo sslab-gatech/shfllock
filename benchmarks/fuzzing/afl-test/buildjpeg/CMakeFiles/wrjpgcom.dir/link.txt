@@ -1,1 +1,0 @@
-/home/sanidhya/fuzzing/afl-2.52b/afl-gcc  -m32 -O3 -DNDEBUG   CMakeFiles/wrjpgcom.dir/wrjpgcom.c.o  -o wrjpgcom -rdynamic -Wl,-rpath,:::::::::::::::::::::::: 

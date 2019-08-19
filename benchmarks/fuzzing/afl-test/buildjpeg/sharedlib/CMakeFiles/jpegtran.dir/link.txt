@@ -1,1 +1,0 @@
-/home/sanidhya/fuzzing/afl-2.52b/afl-gcc  -m32 -O3 -DNDEBUG   CMakeFiles/jpegtran.dir/__/jpegtran.c.o CMakeFiles/jpegtran.dir/__/cdjpeg.c.o CMakeFiles/jpegtran.dir/__/rdswitch.c.o CMakeFiles/jpegtran.dir/__/transupp.c.o  -o ../jpegtran -rdynamic ../libjpeg.so.62.3.0 -Wl,-rpath,/home/sanidhya/fuzzing/afl-test/buildjpeg: 

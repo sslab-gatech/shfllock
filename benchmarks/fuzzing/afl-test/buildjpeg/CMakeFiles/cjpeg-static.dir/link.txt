@@ -1,1 +1,0 @@
-/home/sanidhya/fuzzing/afl-2.52b/afl-gcc  -m32 -O3 -DNDEBUG   CMakeFiles/cjpeg-static.dir/cjpeg.c.o CMakeFiles/cjpeg-static.dir/cdjpeg.c.o CMakeFiles/cjpeg-static.dir/rdgif.c.o CMakeFiles/cjpeg-static.dir/rdppm.c.o CMakeFiles/cjpeg-static.dir/rdswitch.c.o CMakeFiles/cjpeg-static.dir/rdbmp.c.o CMakeFiles/cjpeg-static.dir/rdtarga.c.o  -o cjpeg-static -rdynamic libjpeg.a 
