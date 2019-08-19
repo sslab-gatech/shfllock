@@ -50,9 +50,14 @@ and NUMA-aware blocking rwlock.
     self.FS_TYPES = ["tmpfs"]
 ```
 
-- Vbench:
+## Vbench
+
+- We use the following benchmarks from Vbench:
   - Exim
   - Metis
+
+- Please follow the README.md in the Vbench repo on how to run the benchmark and generate graphs.
+
 - AFL: Follow the README.md in the fuzzing directory
 - Nanobenchmark: Please refer to the `kernel-syncstress` for more information.
 
