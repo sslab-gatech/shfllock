@@ -43,7 +43,7 @@ and NUMA-aware blocking rwlock.
   - MWRM
   - MRDM
 
-- We use following settings for our evaluation:
+- We use following settings for our evaluation, which can be modified in `bin/run-fxmark.py`:
 ```python
     self.DIRECTIOS = ["bufferedio"]
     self.MEDIA_TYPES = ["mem"]
