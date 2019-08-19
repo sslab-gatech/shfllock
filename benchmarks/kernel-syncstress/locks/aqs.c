@@ -14,6 +14,10 @@
 #include <linux/aqs.h>
 #endif
 
+#define ENABLE_SHUFFLERS                        1
+#define ALLOW_PREDECESSORS_AS_SHUFFLERS         1
+#define SELECT_SLEADER                          1
+
 static DEFINE_PER_CPU_ALIGNED(struct aqs_node, aqs_nodes[4]);
 
 #define _AQS_NOSTEAL_VAL        (1U << (_AQS_LOCKED_OFFSET + _AQS_LOCKED_BITS))
@@ -136,6 +140,10 @@ static void shuffle_waiters(struct aqs_lock *lock, struct aqs_node *node,
         int curr_locked_count;
         int one_shuffle = false;
         int shuffled_count = 0;
+
+#ifdef ENABLE_SHUFFLERS
+        return;
+#endif
 
         prev = smp_load_acquire(&node->last_visited);
         if (!prev)
@@ -332,9 +340,11 @@ static void shuffle_waiters(struct aqs_lock *lock, struct aqs_node *node,
         }
 
      out:
+#ifndef SELECT_SLEADER
         if (sleader) {
                 set_sleader(sleader, qend);
         }
+#endif
 }
 
 void aqs_spin_lock_slowpath(struct aqs_lock *lock)
@@ -393,8 +403,10 @@ void aqs_spin_lock_slowpath(struct aqs_lock *lock)
                         if (READ_ONCE(node->lstatus) == AQS_STATUS_LOCKED)
                                 break;
 
+#ifdef ALLOW_PREDECESSORS_AS_SHUFFLERS
                         if (READ_ONCE(node->sleader))
                                 shuffle_waiters(lock, node, false);
+#endif
                 }
                 cpu_relax();
         }
