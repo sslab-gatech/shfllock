@@ -43,7 +43,6 @@
 #include "rwlock/rwaqs_rp_v1.h"
 #include "rwlock/cmcsmcsrw.h"
 #include "rwsem/rwaqm.h"
-/* #include "rwsem/rwaqmevlv.h" */
 #include "mutex/aqm.h"
 
 #include "rcuht.h"
@@ -171,10 +170,6 @@ DECLARE_TABLE_LOCK(table_cna, DEFINE_CNALOCK,
 DECLARE_TABLE_LOCK(table_rwaqm, DECLARE_RWAQM,
                    rwaqm_down_write, rwaqm_up_write,
                    rwaqm_down_read, rwaqm_up_read);
-
-/* DECLARE_TABLE_LOCK(table_rwaqmevlv, DECLARE_RWAQMEVLV, */
-/* 		   rwaqmevlv_down_write, rwaqmevlv_up_write, */
-/* 		   rwaqmevlv_down_read, rwaqmevlv_up_read); */
 
 DECLARE_TABLE_LOCK(table_aqs_rwlock_ntrl, DEFINE_AQS_RWLOCK_NTRL,
                    aqs_write_lock_ntrl, aqs_write_unlock_ntrl,
@@ -1246,16 +1241,6 @@ static struct rcuhashbash_ops all_ops[] = {
 		.write_lock_buckets = table_rwaqm_write_lock_buckets,
 		.write_unlock_buckets = table_rwaqm_write_unlock_buckets,
 	},
-	/* { */
-	/* 	.reader_type = "table_rwaqmevlv", */
-	/* 	.writer_type = "table_rwaqmevlv", */
-	/* 	.read = rcuhashbash_read_lock, */
-	/* 	.read_lock_bucket = table_rwaqmevlv_read_lock_bucket, */
-	/* 	.read_unlock_bucket = table_rwaqmevlv_read_unlock_bucket, */
-	/* 	.write = rcuhashbash_write_lock, */
-	/* 	.write_lock_buckets = table_rwaqmevlv_write_lock_buckets, */
-	/* 	.write_unlock_buckets = table_rwaqmevlv_write_unlock_buckets, */
-	/* }, */
 };
 
 
@@ -1490,6 +1475,6 @@ error:
 module_init(rcuhashbash_init);
 module_exit(rcuhashbash_exit);
 
-MODULE_AUTHOR("Sanidhya Kashyap <sanidhya@gatech.edu>");
+MODULE_AUTHOR("XXX");
 MODULE_DESCRIPTION("Simple stress testing for spinlocks.");
 MODULE_LICENSE("GPL");

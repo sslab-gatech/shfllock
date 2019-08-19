@@ -1,6 +1,6 @@
 #!/bin/bash
 
-locks=(table_spinlock table_aqs table_cna table_mutex table_aqm_mutex_fp \
+locks=(table_spinlock table_aqs table_aqm_mutex_fp \
        table_aqm_mutex_lnuma table_aqm_mutex_rnuma table_aqm_mutex_nfp \
        table_rwlock table_rwsem table_cmcsmcs)
 

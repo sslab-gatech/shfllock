@@ -58,9 +58,9 @@ and NUMA-aware blocking rwlock.
 
 - Please follow the README.md in the Vbench repo on how to run the benchmark and generate graphs.
 
-- AFL: Follow the README.md in the `benchmarks/fuzzing` directory
+- AFL: Please follow the README.md in the `benchmarks/fuzzing` directory
 
-- Nanobenchmark: Please refer to the `kernel-syncstress` for more information.
+- Nanobenchmark: Please refer to the `benchmarks/kernel-syncstress`.
 
 ### Userspace Benchmark
 
