@@ -45,7 +45,7 @@ and NUMA-aware blocking rwlock.
 
 - We use following settings for our evaluation, which can be modified in `bin/run-fxmark.py`:
 ```python
-    self.DIRECTIOS = ["bufferedio"]
+    self.DIRECTIOS = ["nodirectio"]
     self.MEDIA_TYPES = ["mem"]
     self.FS_TYPES = ["tmpfs"]
 ```
