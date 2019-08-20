@@ -1,18 +1,25 @@
 /*
+  Copyright 2013 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at:
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+*/
+
+/*
    american fuzzy lop - vaguely configurable bits
    ----------------------------------------------
 
    Written and maintained by Michal Zalewski <lcamtuf@google.com>
-
-   Copyright 2013, 2014, 2015, 2016 Google Inc. All rights reserved.
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at:
-
-     http://www.apache.org/licenses/LICENSE-2.0
-
- */
+*/
 
 #ifndef _HAVE_CONFIG_H
 #define _HAVE_CONFIG_H
@@ -21,7 +28,7 @@
 
 /* Version string: */
 
-#define VERSION             "2.40b"
+#define VERSION             "2.53b"
 
 /******************************************************
  *                                                    *
@@ -38,7 +45,8 @@
 
 #define FANCY_BOXES
 
-/* Default timeout for fuzzed code (milliseconds): */
+/* Default timeout for fuzzed code (milliseconds). This is the upper bound,
+   also used for detecting hangs; the actual value is auto-scaled: */
 
 #define EXEC_TIMEOUT        1000
 
@@ -64,9 +72,9 @@
 #define CAL_CYCLES          8
 #define CAL_CYCLES_LONG     40
 
-/* Number of subsequent hangs before abandoning an input file: */
+/* Number of subsequent timeouts before abandoning an input file: */
 
-#define HANG_LIMIT          250
+#define TMOUT_LIMIT         250
 
 /* Maximum number of unique hangs or crashes to record: */
 
@@ -345,15 +353,5 @@
    measuring coverage that could be attained by a "dumb" fuzzing algorithm: */
 
 // #define IGNORE_FINDS
-
-/* max cores used for fuzzing */
-#define MAX_CORES		240
-
-/* the number of cached bitmaps */
-#define MAX_BITMAPS		2048
-
-// #define MYSTATS
-
-#define MYFORK
 
 #endif /* ! _HAVE_CONFIG_H */

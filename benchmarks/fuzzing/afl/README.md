@@ -1,22 +1,13 @@
-==================
-american fuzzy lop
-==================
+# american fuzzy lop
 
-  Written and maintained by Michal Zalewski <lcamtuf@google.com>
+[![Build Status](https://travis-ci.org/google/AFL.svg?branch=master)](https://travis-ci.org/google/AFL)
 
-  Copyright 2013, 2014, 2015, 2016 Google Inc. All rights reserved.
-  Released under terms and conditions of Apache License, Version 2.0.
+Originally developed by Michal Zalewski <lcamtuf@google.com>.
 
-  For new versions and additional information, check out:
-  http://lcamtuf.coredump.cx/afl/
+See [QuickStartGuide.txt](docs/QuickStartGuide.txt) if you don't have time to read
+this file.
 
-  To compare notes with other users or get notified about major new features,
-  send a mail to <afl-users+subscribe@googlegroups.com>.
-
-  ** See QuickStartGuide.txt if you don't have time to read this file. **
-
-1) Challenges of guided fuzzing
--------------------------------
+## 1) Challenges of guided fuzzing
 
 Fuzzing is one of the most powerful and proven strategies for identifying
 security issues in real-world software; it is responsible for the vast
@@ -42,8 +33,7 @@ All these methods are extremely promising in experimental settings, but tend
 to suffer from reliability and performance problems in practical uses - and
 currently do not offer a viable alternative to "dumb" fuzzing techniques.
 
-2) The afl-fuzz approach
-------------------------
+## 2) The afl-fuzz approach
 
 American Fuzzy Lop is a brute-force fuzzer coupled with an exceedingly simple
 but rock-solid instrumentation-guided genetic algorithm. It uses a modified
@@ -81,8 +71,7 @@ closed-source tools.
 The fuzzer is thoroughly tested to deliver out-of-the-box performance far
 superior to blind fuzzing or coverage-only tools.
 
-3) Instrumenting programs for use with AFL
-------------------------------------------
+## 3) Instrumenting programs for use with AFL
 
 When source code is available, instrumentation can be injected by a companion
 tool that works as a drop-in replacement for gcc or clang in any standard build
@@ -95,10 +84,12 @@ or even faster than possible with traditional tools.
 The correct way to recompile the target program may vary depending on the
 specifics of the build process, but a nearly-universal approach would be:
 
+```shell
 $ CC=/path/to/afl/afl-gcc ./configure
 $ make clean all
+```
 
-For C++ programs, you'd would also want to set CXX=/path/to/afl/afl-g++.
+For C++ programs, you'd would also want to set `CXX=/path/to/afl/afl-g++`.
 
 The clang wrappers (afl-clang and afl-clang++) can be used in the same way;
 clang users may also opt to leverage a higher-performance instrumentation mode,
@@ -108,21 +99,22 @@ When testing libraries, you need to find or write a simple program that reads
 data from stdin or from a file and passes it to the tested library. In such a
 case, it is essential to link this executable against a static version of the
 instrumented library, or to make sure that the correct .so file is loaded at
-runtime (usually by setting LD_LIBRARY_PATH). The simplest option is a static
+runtime (usually by setting `LD_LIBRARY_PATH`). The simplest option is a static
 build, usually possible via:
 
+```shell
 $ CC=/path/to/afl/afl-gcc ./configure --disable-shared
+```
 
-Setting AFL_HARDEN=1 when calling 'make' will cause the CC wrapper to
+Setting `AFL_HARDEN=1` when calling 'make' will cause the CC wrapper to
 automatically enable code hardening options that make it easier to detect
 simple memory bugs. Libdislocator, a helper library included with AFL (see
 libdislocator/README.dislocator) can help uncover heap corruption issues, too.
 
-PS. ASAN users are advised to review notes_for_asan.txt file for important
+PS. ASAN users are advised to review [notes_for_asan.txt](docs/notes_for_asan.txt) file for important
 caveats.
 
-4) Instrumenting binary-only apps
----------------------------------
+## 4) Instrumenting binary-only apps
 
 When source code is *NOT* available, the fuzzer offers experimental support for
 fast, on-the-fly instrumentation of black-box binaries. This is accomplished
@@ -131,23 +123,24 @@ with a version of QEMU running in the lesser-known "user space emulation" mode.
 QEMU is a project separate from AFL, but you can conveniently build the
 feature by doing:
 
+```shell
 $ cd qemu_mode
 $ ./build_qemu_support.sh
+```
 
 For additional instructions and caveats, see qemu_mode/README.qemu.
 
 The mode is approximately 2-5x slower than compile-time instrumentation, is
 less conductive to parallelization, and may have some other quirks.
 
-5) Choosing initial test cases
-------------------------------
+## 5) Choosing initial test cases
 
 To operate correctly, the fuzzer requires one or more starting file that
 contains a good example of the input data normally expected by the targeted
 application. There are two basic rules:
 
   - Keep the files small. Under 1 kB is ideal, although not strictly necessary.
-    For a discussion of why size matters, see perf_tips.txt.
+    For a discussion of why size matters, see [perf_tips.txt](docs/perf_tips.txt).
 
   - Use multiple test cases only if they are functionally different from
     each other. There is no point in using fifty different vacation photos
@@ -160,8 +153,7 @@ PS. If a large corpus of data is available for screening, you may want to use
 the afl-cmin utility to identify a subset of functionally distinct files that
 exercise different code paths in the target binary.
 
-6) Fuzzing binaries
--------------------
+## 6) Fuzzing binaries
 
 The fuzzing process itself is carried out by the afl-fuzz utility. This program
 requires a read-only directory with initial test cases, a separate place to
@@ -169,13 +161,17 @@ store its findings, plus a path to the binary to test.
 
 For target binaries that accept input directly from stdin, the usual syntax is:
 
+```shell
 $ ./afl-fuzz -i testcase_dir -o findings_dir /path/to/program [...params...]
+```
 
 For programs that take input from a file, use '@@' to mark the location in
 the target's command line where the input file name should be placed. The
 fuzzer will substitute this for you:
 
+```shell
 $ ./afl-fuzz -i testcase_dir -o findings_dir /path/to/program @@
+```
 
 You can also use the -f option to have the mutated data written to a specific
 file. This is useful if the program expects a particular file extension or so.
@@ -187,19 +183,19 @@ You can use -t and -m to override the default timeout and memory limit for the
 executed process; rare examples of targets that may need these settings touched
 include compilers and video decoders.
 
-Tips for optimizing fuzzing performance are discussed in perf_tips.txt.
+Tips for optimizing fuzzing performance are discussed in [perf_tips.txt](docs/perf_tips.txt).
 
 Note that afl-fuzz starts by performing an array of deterministic fuzzing
 steps, which can take several days, but tend to produce neat test cases. If you
 want quick & dirty results right away - akin to zzuf and other traditional
 fuzzers - add the -d option to the command line.
 
-7) Interpreting output
-----------------------
+## 7) Interpreting output
 
-See the status_screen.txt file for information on how to interpret the
-displayed stats and monitor the health of the process. Be sure to consult this
-file especially if any UI elements are highlighted in red.
+See the [status_screen.txt](docs/status_screen.txt) file for information on
+how to interpret the displayed stats and monitor the health of the process.
+Be sure to consult this file especially if any UI elements are highlighted in
+red.
 
 The fuzzing process will continue until you press Ctrl-C. At minimum, you want
 to allow the fuzzer to complete one queue cycle, which may take anywhere from a
@@ -211,19 +207,19 @@ in real time:
   - queue/   - test cases for every distinctive execution path, plus all the
                starting files given by the user. This is the synthesized corpus
                mentioned in section 2.
-
                Before using this corpus for any other purposes, you can shrink
                it to a smaller size using the afl-cmin tool. The tool will find
                a smaller subset of files offering equivalent edge coverage.
 
   - crashes/ - unique test cases that cause the tested program to receive a
-               fatal signal (e.g., SIGSEGV, SIGILL, SIGABRT). The entries are 
+               fatal signal (e.g., SIGSEGV, SIGILL, SIGABRT). The entries are
                grouped by the received signal.
 
-  - hangs/   - unique test cases that cause the tested program to time out. Note
-               that when default (aggressive) timeout settings are in effect,
-               this can be slightly noisy due to latency spikes and other
-               natural phenomena.
+  - hangs/   - unique test cases that cause the tested program to time out. The
+               default time limit before something is classified as a hang is
+               the larger of 1 second and the value of the -t parameter.
+               The value can be fine-tuned by setting AFL_HANG_TMOUT, but this
+               is rarely necessary.
 
 Crashes and hangs are considered "unique" if the associated execution paths
 involve any state transitions not seen in previously-recorded faults. If a
@@ -236,34 +232,36 @@ queue entries. This should help with debugging.
 When you can't reproduce a crash found by afl-fuzz, the most likely cause is
 that you are not setting the same memory limit as used by the tool. Try:
 
+```shell
 $ LIMIT_MB=50
 $ ( ulimit -Sv $[LIMIT_MB << 10]; /path/to/tested_binary ... )
+```
 
 Change LIMIT_MB to match the -m parameter passed to afl-fuzz. On OpenBSD,
 also change -Sv to -Sd.
 
 Any existing output directory can be also used to resume aborted jobs; try:
 
+```shell
 $ ./afl-fuzz -i- -o existing_output_dir [...etc...]
+```
 
 If you have gnuplot installed, you can also generate some pretty graphs for any
 active fuzzing task using afl-plot. For an example of how this looks like,
-see http://lcamtuf.coredump.cx/afl/plot/.
+see [http://lcamtuf.coredump.cx/afl/plot/](http://lcamtuf.coredump.cx/afl/plot/).
 
-8) Parallelized fuzzing
------------------------
+## 8) Parallelized fuzzing
 
 Every instance of afl-fuzz takes up roughly one core. This means that on
 multi-core systems, parallelization is necessary to fully utilize the hardware.
 For tips on how to fuzz a common target on multiple cores or multiple networked
-machines, please refer to parallel_fuzzing.txt.
+machines, please refer to [parallel_fuzzing.txt](docs/parallel_fuzzing.txt).
 
 The parallel fuzzing mode also offers a simple way for interfacing AFL to other
 fuzzers, to symbolic or concolic execution engines, and so forth; again, see the
-last section of parallel_fuzzing.txt for tips.
+last section of [parallel_fuzzing.txt](docs/parallel_fuzzing.txt) for tips.
 
-9) Fuzzer dictionaries
-----------------------
+## 9) Fuzzer dictionaries
 
 By default, afl-fuzz mutation engine is optimized for compact data formats -
 say, images, multimedia, compressed data, regular expression syntax, or shell
@@ -273,9 +271,9 @@ redundant verbiage - notably including HTML, SQL, or JavaScript.
 To avoid the hassle of building syntax-aware tools, afl-fuzz provides a way to
 seed the fuzzing process with an optional dictionary of language keywords,
 magic headers, or other special tokens associated with the targeted data type
-- and use that to reconstruct the underlying grammar on the go:
+-- and use that to reconstruct the underlying grammar on the go:
 
-  http://lcamtuf.blogspot.com/2015/01/afl-fuzz-making-up-grammar-with.html
+  [http://lcamtuf.blogspot.com/2015/01/afl-fuzz-making-up-grammar-with.html](http://lcamtuf.blogspot.com/2015/01/afl-fuzz-making-up-grammar-with.html)
 
 To use this feature, you first need to create a dictionary in one of the two
 formats discussed in dictionaries/README.dictionaries; and then point the fuzzer
@@ -287,7 +285,7 @@ There is no way to provide more structured descriptions of the underlying
 syntax, but the fuzzer will likely figure out some of this based on the
 instrumentation feedback alone. This actually works in practice, say:
 
-  http://lcamtuf.blogspot.com/2015/04/finding-bugs-in-sqlite-easy-way.html
+  [http://lcamtuf.blogspot.com/2015/04/finding-bugs-in-sqlite-easy-way.html](http://lcamtuf.blogspot.com/2015/04/finding-bugs-in-sqlite-easy-way.html)
 
 PS. Even when no explicit dictionary is given, afl-fuzz will try to extract
 existing syntax tokens in the input corpus by watching the instrumentation
@@ -298,8 +296,7 @@ If a dictionary is really hard to come by, another option is to let AFL run
 for a while, and then use the token capture library that comes as a companion
 utility with AFL. For that, see libtokencap/README.tokencap.
 
-10) Crash triage
-----------------
+## 10) Crash triage
 
 The coverage-based grouping of crashes usually produces a small data set that
 can be quickly triaged manually or with a very simple GDB or Valgrind script.
@@ -307,7 +304,7 @@ Every crash is also traceable to its parent non-crashing test case in the
 queue, making it easier to diagnose faults.
 
 Having said that, it's important to acknowledge that some fuzzing crashes can be
-difficult quickly evaluate for exploitability without a lot of debugging and
+difficult to quickly evaluate for exploitability without a lot of debugging and
 code analysis work. To assist with this task, afl-fuzz supports a very unique
 "crash exploration" mode enabled with the -C flag.
 
@@ -327,7 +324,9 @@ beneath.
 Oh, one more thing: for test case minimization, give afl-tmin a try. The tool
 can be operated in a very simple way:
 
+```shell
 $ ./afl-tmin -i test_case -o minimized_result -- /path/to/program [...]
+```
 
 The tool works with crashing and non-crashing test cases alike. In the crash
 mode, it will happily accept instrumented and non-instrumented binaries. In the
@@ -342,10 +341,9 @@ file, attempts to sequentially flip bytes, and observes the behavior of the
 tested program. It then color-codes the input based on which sections appear to
 be critical, and which are not; while not bulletproof, it can often offer quick
 insights into complex file formats. More info about its operation can be found
-near the end of technical_details.txt.
+near the end of [technical_details.txt](docs/technical_details.txt).
 
-11) Going beyond crashes
-------------------------
+## 11) Going beyond crashes
 
 Fuzzing is a wonderful and underutilized technique for discovering non-crashing
 design and implementation errors, too. Quite a few interesting bugs have been
@@ -365,11 +363,10 @@ found by modifying the target programs to call abort() when, say:
 
 Implementing these or similar sanity checks usually takes very little time;
 if you are the maintainer of a particular package, you can make this code
-conditional with #ifdef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION (a flag also
-shared with libfuzzer) or #ifdef __AFL_COMPILER (this one is just for AFL).
+conditional with `#ifdef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION` (a flag also
+shared with libfuzzer) or `#ifdef __AFL_COMPILER` (this one is just for AFL).
 
-12) Common-sense risks
-----------------------
+## 12) Common-sense risks
 
 Please keep in mind that, similarly to many other computationally-intensive
 tasks, fuzzing may put strain on your hardware and on the OS. In particular:
@@ -394,10 +391,11 @@ tasks, fuzzing may put strain on your hardware and on the OS. In particular:
 
     A good way to monitor disk I/O on Linux is the 'iostat' command:
 
+```shell
     $ iostat -d 3 -x -k [...optional disk ID...]
+```
 
-13) Known limitations & areas for improvement
----------------------------------------------
+## 13) Known limitations & areas for improvement
 
 Here are some of the most important caveats for AFL:
 
@@ -417,8 +415,8 @@ Here are some of the most important caveats for AFL:
     experimental/post_library/.
 
   - There are some unfortunate trade-offs with ASAN and 64-bit binaries. This
-    isn't due to any specific fault of afl-fuzz; see notes_for_asan.txt for
-    tips.
+    isn't due to any specific fault of afl-fuzz; see [notes_for_asan.txt](docs/notes_for_asan.txt)
+    for tips.
 
   - There is no direct support for fuzzing network services, background
     daemons, or interactive apps that require UI interaction to work. You may
@@ -437,12 +435,12 @@ Here are some of the most important caveats for AFL:
 
 Beyond this, see INSTALL for platform-specific tips.
 
-14) Special thanks
-------------------
+## 14) Special thanks
 
 Many of the improvements to afl-fuzz wouldn't be possible without feedback,
 bug reports, or patches from:
 
+```
   Jann Horn                             Hanno Boeck
   Felix Groebert                        Jakub Wilk
   Richard W. M. Jones                   Alexander Cherepanov
@@ -481,28 +479,15 @@ bug reports, or patches from:
   Joshua J. Drake                       Toby Hutton
   Rene Freingruber                      Sergey Davidoff
   Sami Liedes                           Craig Young
-  Andrzej Jackowski
+  Andrzej Jackowski                     Daniel Hodson
+```
 
 Thank you!
 
-15) Contact
------------
+## 15) Contact
 
-Questions? Concerns? Bug reports? The author can be usually reached at
-<lcamtuf@google.com>.
+Questions? Concerns? Bug reports? Please use GitHub.
 
 There is also a mailing list for the project; to join, send a mail to
 <afl-users+subscribe@googlegroups.com>. Or, if you prefer to browse
-archives first, try:
-
-  https://groups.google.com/group/afl-users
-
-PS. If you wish to submit raw code to be incorporated into the project, please
-be aware that the copyright on most of AFL is claimed by Google. While you do
-retain copyright on your contributions, they do ask people to agree to a simple
-CLA first:
-
-  https://cla.developers.google.com/clas
-
-Sorry about the hassle. Of course, no CLA is required for feature requests or
-bug reports.
+archives first, try: [https://groups.google.com/group/afl-users](https://groups.google.com/group/afl-users).

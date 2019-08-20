@@ -1,23 +1,31 @@
 /*
+  Copyright 2016 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at:
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+*/
+
+/*
    american fuzzy lop - file format analyzer
    -----------------------------------------
 
    Written and maintained by Michal Zalewski <lcamtuf@google.com>
-
-   Copyright 2016 Google Inc. All rights reserved.
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at:
-
-     http://www.apache.org/licenses/LICENSE-2.0
 
    A nifty utility that grabs an input file and takes a stab at explaining
    its structure by observing how changes to it affect the execution path.
 
    If the output scrolls past the edge of the screen, pipe it to 'less -r'.
 
- */
+*/
 
 #define AFL_MAIN
 
@@ -68,6 +76,7 @@ static s32 shm_id,                    /* ID of the SHM region              */
            dev_null_fd = -1;          /* FD to /dev/null                   */
 
 static u8  edges_only,                /* Ignore hit counts?                */
+           use_hex_offsets,           /* Show hex offsets?                 */
            use_stdin = 1;             /* Use stdin for program input?      */
 
 static volatile u8
@@ -486,9 +495,13 @@ static void dump_hex(u8* buf, u32 len, u8* b_data) {
       /* Every 16 digits, display offset. */
 
       if (!((i + off) % 16)) {
-    
+
         if (off) SAYF(cRST cLCY ">");
-        SAYF(cRST cGRA "%s[%06u] " cRST, (i + off) ? "\n" : "", i + off);
+
+        if (use_hex_offsets)
+          SAYF(cRST cGRA "%s[%06x] " cRST, (i + off) ? "\n" : "", i + off);
+        else
+          SAYF(cRST cGRA "%s[%06u] " cRST, (i + off) ? "\n" : "", i + off);
 
       }
 
@@ -512,7 +525,10 @@ static void dump_hex(u8* buf, u32 len, u8* b_data) {
 
 #else
 
-    SAYF("    Offset %u, length %u: ", i, rlen);
+    if (use_hex_offsets)
+      SAYF("    Offset %x, length %u: ", i, rlen);
+    else
+      SAYF("    Offset %u, length %u: ", i, rlen);
 
     switch (rtype) {
 
@@ -658,14 +674,14 @@ static void set_up_environment(void) {
 
     u8* use_dir = ".";
 
-    if (!access(use_dir, R_OK | W_OK | X_OK)) {
+    if (access(use_dir, R_OK | W_OK | X_OK)) {
 
       use_dir = getenv("TMPDIR");
       if (!use_dir) use_dir = "/tmp";
 
-      prog_in = alloc_printf("%s/.afl-tmin-temp-%u", use_dir, getpid());
-
     }
+
+    prog_in = alloc_printf("%s/.afl-analyze-temp-%u", use_dir, getpid());
 
   }
 
@@ -874,6 +890,10 @@ static char** get_qemu_argv(u8* own_loc, char** argv, int argc) {
   char** new_argv = ck_alloc(sizeof(char*) * (argc + 4));
   u8 *tmp, *cp, *rsl, *own_copy;
 
+  /* Workaround for a QEMU stability glitch. */
+
+  setenv("QEMU_LOG", "nochain", 1);
+
   memcpy(new_argv + 3, argv + 1, sizeof(char*) * argc);
 
   /* Now we need to actually find qemu for argv[0]. */
@@ -1025,6 +1045,8 @@ int main(int argc, char** argv) {
     }
 
   if (optind == argc || !in_file) usage(argv[0]);
+
+  use_hex_offsets = !!getenv("AFL_ANALYZE_HEX");
 
   setup_shm();
   setup_signal_handlers();

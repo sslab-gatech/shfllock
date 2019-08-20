@@ -4,7 +4,7 @@
 #
 # Written and maintained by Michal Zalewski <lcamtuf@google.com>
 # 
-# Copyright 2013, 2014, 2015, 2016 Google Inc. All rights reserved.
+# Copyright 2013, 2014, 2015, 2016, 2017 Google Inc. All rights reserved.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -44,7 +44,7 @@ endif
 
 COMM_HDR    = alloc-inl.h config.h debug.h types.h
 
-all: test_x86 $(PROGS) my-afl-as test_build all_done
+all: test_x86 $(PROGS) afl-as test_build all_done
 
 ifndef AFL_NO_X86
 
@@ -65,22 +65,12 @@ afl-gcc: afl-gcc.c $(COMM_HDR) | test_x86
 	$(CC) $(CFLAGS) $@.c -o $@ $(LDFLAGS)
 	set -e; for i in afl-g++ afl-clang afl-clang++; do ln -sf afl-gcc $$i; done
 
-ifndef AFL_PERF
-
 afl-as: afl-as.c afl-as.h $(COMM_HDR) | test_x86
 	$(CC) $(CFLAGS) $@.c -o $@ $(LDFLAGS)
 	ln -sf afl-as as
 
-else
-
-afl-as: my-afl-as.c my-afl-as.h $(COMM_HDR) | test_x86
-	$(CC) $(CFLAGS) my-afl-as.c -o afl-as $(LDFLAGS)
-	ln -sf afl-as as
-
-endif
-
 afl-fuzz: afl-fuzz.c $(COMM_HDR) | test_x86
-	$(CC) $(CFLAGS) $@.c -o $@ $(LDFLAGS) -lrt
+	$(CC) $(CFLAGS) $@.c -o $@ $(LDFLAGS)
 
 afl-showmap: afl-showmap.c $(COMM_HDR) | test_x86
 	$(CC) $(CFLAGS) $@.c -o $@ $(LDFLAGS)
@@ -101,7 +91,7 @@ test_build: afl-gcc afl-as afl-showmap
 	unset AFL_USE_ASAN AFL_USE_MSAN; AFL_QUIET=1 AFL_INST_RATIO=100 AFL_PATH=. ./$(TEST_CC) $(CFLAGS) test-instr.c -o test-instr $(LDFLAGS)
 	echo 0 | ./afl-showmap -m none -q -o .test-instr0 ./test-instr
 	echo 1 | ./afl-showmap -m none -q -o .test-instr1 ./test-instr
-	# @rm -f test-instr
+	@rm -f test-instr
 	@cmp -s .test-instr0 .test-instr1; DR="$$?"; rm -f .test-instr0 .test-instr1; if [ "$$DR" = "0" ]; then echo; echo "Oops, the instrumentation does not seem to be behaving correctly!"; echo; echo "Please ping <lcamtuf@google.com> to troubleshoot the issue."; echo; exit 1; fi
 	@echo "[+] All right, the instrumentation seems to be working!"
 
@@ -121,8 +111,8 @@ all_done: test_build
 .NOTPARALLEL: clean
 
 clean:
-	rm -f $(PROGS) my-afl-as afl-as as afl-g++ afl-clang afl-clang++ *.o *~ a.out core core.[1-9][0-9]* *.stackdump test .test test-instr .test-instr0 .test-instr1 qemu_mode/qemu-2.3.0.tar.bz2 afl-qemu-trace
-	rm -rf out_dir qemu_mode/qemu-2.3.0
+	rm -f $(PROGS) afl-as as afl-g++ afl-clang afl-clang++ *.o *~ a.out core core.[1-9][0-9]* *.stackdump test .test test-instr .test-instr0 .test-instr1 qemu_mode/qemu-2.10.0.tar.bz2 afl-qemu-trace
+	rm -rf out_dir qemu_mode/qemu-2.10.0
 	$(MAKE) -C llvm_mode clean
 	$(MAKE) -C libdislocator clean
 	$(MAKE) -C libtokencap clean

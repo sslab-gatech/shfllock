@@ -1,16 +1,24 @@
 /*
+  Copyright 2013 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at:
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+*/
+
+/*
    american fuzzy lop - map display utility
    ----------------------------------------
 
    Written and maintained by Michal Zalewski <lcamtuf@google.com>
-
-   Copyright 2013, 2014, 2015, 2016 Google Inc. All rights reserved.
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at:
-
-     http://www.apache.org/licenses/LICENSE-2.0
 
    A very simple tool that runs the targeted binary and displays
    the contents of the trace bitmap in a human-readable form. Useful in
@@ -18,8 +26,7 @@
 
    Exit code is 2 if the target program crashes; 1 if it times out or
    there is a problem executing it; or 0 if execution is successful.
-
- */
+*/
 
 #define AFL_MAIN
 
@@ -64,7 +71,8 @@ static s32 shm_id;                    /* ID of the SHM region              */
 static u8  quiet_mode,                /* Hide non-essential messages?      */
            edges_only,                /* Ignore hit counts?                */
            cmin_mode,                 /* Generate output in afl-cmin mode? */
-           binary_mode;               /* Write output as a binary map      */
+           binary_mode,               /* Write output as a binary map      */
+           keep_cores;                /* Allow coredumps?                  */
 
 static volatile u8
            stop_soon,                 /* Ctrl-C pressed?                   */
@@ -285,8 +293,14 @@ static void run_target(char** argv) {
 
     }
 
-    r.rlim_max = r.rlim_cur = 0;
+    if (!keep_cores) r.rlim_max = r.rlim_cur = 0;
+    else r.rlim_max = r.rlim_cur = RLIM_INFINITY;
+
     setrlimit(RLIMIT_CORE, &r); /* Ignore errors */
+
+    if (!getenv("LD_BIND_LAZY")) setenv("LD_BIND_NOW", "1", 0);
+
+    setsid();
 
     execv(target_path, argv);
 
@@ -479,7 +493,8 @@ static void usage(u8* argv0) {
        "Other settings:\n\n"
 
        "  -q            - sink program's output and don't show messages\n"
-       "  -e            - show edge coverage only, ignore hit counts\n\n"
+       "  -e            - show edge coverage only, ignore hit counts\n"
+       "  -c            - allow core dumps\n\n"
 
        "This tool displays raw tuple data captured by AFL instrumentation.\n"
        "For additional help, consult %s/README.\n\n" cRST,
@@ -551,6 +566,10 @@ static char** get_qemu_argv(u8* own_loc, char** argv, int argc) {
   char** new_argv = ck_alloc(sizeof(char*) * (argc + 4));
   u8 *tmp, *cp, *rsl, *own_copy;
 
+  /* Workaround for a QEMU stability glitch. */
+
+  setenv("QEMU_LOG", "nochain", 1);
+
   memcpy(new_argv + 3, argv + 1, sizeof(char*) * argc);
 
   new_argv[2] = target_path;
@@ -614,7 +633,7 @@ int main(int argc, char** argv) {
 
   doc_path = access(DOC_PATH, F_OK) ? "docs" : DOC_PATH;
 
-  while ((opt = getopt(argc,argv,"+o:m:t:A:eqZQb")) > 0)
+  while ((opt = getopt(argc,argv,"+o:m:t:A:eqZQbc")) > 0)
 
     switch (opt) {
 
@@ -717,6 +736,12 @@ int main(int argc, char** argv) {
            similar to that dumped by afl-fuzz in <out_dir/queue/fuzz_bitmap. */
 
         binary_mode = 1;
+        break;
+
+      case 'c':
+
+        if (keep_cores) FATAL("Multiple -c options not supported");
+        keep_cores = 1;
         break;
 
       default:

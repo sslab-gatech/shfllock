@@ -1,16 +1,24 @@
 /*
+  Copyright 2013 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at:
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+*/
+
+/*
    american fuzzy lop - wrapper for GCC and clang
    ----------------------------------------------
 
    Written and maintained by Michal Zalewski <lcamtuf@google.com>
-
-   Copyright 2013, 2014, 2015 Google Inc. All rights reserved.
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at:
-
-     http://www.apache.org/licenses/LICENSE-2.0
 
    This program is a drop-in replacement for GCC or clang. The most common way
    of using it is to pass the path to afl-gcc or afl-clang via CC when invoking
@@ -29,7 +37,7 @@
    If you want to call a non-default compiler as a next step of the chain,
    specify its location via AFL_CC or AFL_CXX.
 
- */
+*/
 
 #define AFL_MAIN
 
@@ -287,6 +295,8 @@ static void edit_params(u32 argc, char** argv) {
     cc_params[cc_par_cnt++] = "-fno-builtin-strcasecmp";
     cc_params[cc_par_cnt++] = "-fno-builtin-strncasecmp";
     cc_params[cc_par_cnt++] = "-fno-builtin-memcmp";
+    cc_params[cc_par_cnt++] = "-fno-builtin-strstr";
+    cc_params[cc_par_cnt++] = "-fno-builtin-strcasestr";
 
   }
 

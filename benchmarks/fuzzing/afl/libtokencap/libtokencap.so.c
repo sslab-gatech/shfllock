@@ -1,23 +1,30 @@
 /*
+  Copyright 2016 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at:
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+*/
+
+/*
 
    american fuzzy lop - extract tokens passed to strcmp / memcmp
    -------------------------------------------------------------
 
    Written and maintained by Michal Zalewski <lcamtuf@google.com>
 
-   Copyright 2016 Google Inc. All rights reserved.
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at:
-
-     http://www.apache.org/licenses/LICENSE-2.0
-
    This Linux-only companion library allows you to instrument strcmp(),
    memcmp(), and related functions to automatically extract tokens.
    See README.tokencap for more info.
-
- */
+*/
 
 #include <stdio.h>
 #include <string.h>
@@ -102,7 +109,8 @@ static void __tokencap_dump(const u8* ptr, size_t len, u8 is_text) {
   u32 i;
   u32 pos = 0;
 
-  if (len < MIN_AUTO_EXTRA || len > MAX_AUTO_EXTRA) return;
+  if (len < MIN_AUTO_EXTRA || len > MAX_AUTO_EXTRA || !__tokencap_out_file)
+    return;
 
   for (i = 0; i < len; i++) {
 
@@ -235,6 +243,57 @@ int memcmp(const void* mem1, const void* mem2, size_t len) {
     mem1++; mem2++;
 
   }
+
+  return 0;
+
+}
+
+
+#undef strstr
+
+char* strstr(const char* haystack, const char* needle) {
+
+  if (__tokencap_is_ro(haystack))
+    __tokencap_dump(haystack, strlen(haystack), 1);
+
+  if (__tokencap_is_ro(needle))
+    __tokencap_dump(needle, strlen(needle), 1);
+
+  do {
+    const char* n = needle;
+    const char* h = haystack;
+
+    while(*n && *h && *n == *h) n++, h++;
+
+    if(!*n) return (char*)haystack;
+
+  } while (*(haystack++));
+
+  return 0;
+
+}
+
+
+#undef strcasestr
+
+char* strcasestr(const char* haystack, const char* needle) {
+
+  if (__tokencap_is_ro(haystack))
+    __tokencap_dump(haystack, strlen(haystack), 1);
+
+  if (__tokencap_is_ro(needle))
+    __tokencap_dump(needle, strlen(needle), 1);
+
+  do {
+
+    const char* n = needle;
+    const char* h = haystack;
+
+    while(*n && *h && tolower(*n) == tolower(*h)) n++, h++;
+
+    if(!*n) return (char*)haystack;
+
+  } while(*(haystack++));
 
   return 0;
 

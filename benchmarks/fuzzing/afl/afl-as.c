@@ -1,16 +1,24 @@
 /*
+  Copyright 2013 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at:
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+*/
+
+/*
    american fuzzy lop - wrapper for GNU as
    ---------------------------------------
 
    Written and maintained by Michal Zalewski <lcamtuf@google.com>
-
-   Copyright 2013, 2014, 2015 Google Inc. All rights reserved.
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at:
-
-     http://www.apache.org/licenses/LICENSE-2.0
 
    The sole purpose of this wrapper is to preprocess assembly files generated
    by GCC / clang and inject the instrumentation bits included from afl-as.h. It
@@ -26,7 +34,7 @@
    allow clang users to make things work even with hand-crafted assembly. Just
    note that there is no equivalent for GCC.
 
- */
+*/
 
 #define AFL_MAIN
 
@@ -56,7 +64,8 @@ static u8*  modified_file;      /* Instrumented file for the real 'as'  */
 static u8   be_quiet,           /* Quiet mode (no stderr output)        */
             clang_mode,         /* Running in clang mode?               */
             pass_thru,          /* Just pass data through?              */
-            just_version;       /* Just show version?                   */
+            just_version,       /* Just show version?                   */
+            sanitizer;          /* Using ASAN / MSAN                    */
 
 static u32  inst_ratio = 100,   /* Instrumentation probability (%)      */
             as_par_cnt = 1;     /* Number of params to 'as'             */
@@ -454,7 +463,8 @@ static void add_instrumentation(void) {
                           pass_thru ? " (pass-thru mode)" : "");
     else OKF("Instrumented %u locations (%s-bit, %s mode, ratio %u%%).",
              ins_lines, use_64bit ? "64" : "32",
-             getenv("AFL_HARDEN") ? "hardened" : "non-hardened",
+             getenv("AFL_HARDEN") ? "hardened" : 
+             (sanitizer ? "ASAN/MSAN" : "non-hardened"),
              inst_ratio);
  
   }
@@ -521,7 +531,10 @@ int main(int argc, char** argv) {
      ASAN-specific branches. But we can probabilistically compensate for
      that... */
 
-  if (getenv("AFL_USE_ASAN") || getenv("AFL_USE_MSAN")) inst_ratio /= 3;
+  if (getenv("AFL_USE_ASAN") || getenv("AFL_USE_MSAN")) {
+    sanitizer = 1;
+    inst_ratio /= 3;
+  }
 
   if (!just_version) add_instrumentation();
 
