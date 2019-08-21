@@ -1,6 +1,6 @@
 # AFL
 
-- We use libjpeg as a fuzzing target, which is in the `afl-test` folder.
+- We use libjpeg as a fuzzing target [1].
 
 ## Setup
 - Compile the afl and the instrumentation part as follows:
@@ -12,14 +12,19 @@
 
 - Setup the libjpeg as follows:
 ```bash
- $ cd jpeg-9b
- $ CC=../afl/afl-gcc ./configure
- $ make
- $ ./djpeg -h # for creating a executable used for fuzzing in ./libs/lt-djpeg
+ $ AFL_DIR=$(pwd)/afl
+ $ mkdir buildjpeg
+ $ cd buildjpeg
+ $ export PATH=$PATH:$AFL_DIR
+ $ cmake -G"Unix Makefiles" -DCMAKE_C_COMPILER=afl-gcc -DCMAKE_C_FLAGS=-m32 ../libjpeg-turbo
+ $ make -j
 ```
 
 ## Executing
 - Execute the `run-afl.sh` script to prepare and run the fuzzing
 ```bash
- $ ./run-afl.sh
+ $ ./run-afl.py <num-threads> <time in seconds>
 ```
+
+### Reference
+[[1] Scaling AFL to a 256 thread machine](https://gamozolabs.github.io/fuzzing/2018/09/16/scaling_afl.html)
