@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 sudo sh -c "echo 0 > /proc/sys/kernel/kptr_restrict"
 sudo sh -c "echo core > /proc/sys/kernel/core_pattern"
@@ -14,7 +14,7 @@ idir=/tmp/mosbench/tmpfs-separate/0
 
 cp -r input $idir/
 
-if [[ -d $odir ]]
+if [[ -d "$odir" ]]
 then
     rm -fr $odir
 fi

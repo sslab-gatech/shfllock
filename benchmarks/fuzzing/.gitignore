@@ -5,4 +5,7 @@ afl/afl-gotcpu
 afl/afl-showmap
 afl/afl-tmin
 afl/my-afl-as
+afl/afl-clang-fast
+afl/afl-clang-fast++
+afl/afl-llvm-pass.so
 buildjpeg

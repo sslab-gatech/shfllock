@@ -23,7 +23,7 @@
 ## Executing
 - Execute the `run-afl.sh` script to prepare and run the fuzzing
 ```bash
- $ ./run-afl.sh
+ $ ./run-afl.py <num-threads> <time in seconds>
 ```
 
 ### Reference
