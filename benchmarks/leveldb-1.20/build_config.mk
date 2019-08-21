@@ -3,7 +3,7 @@ MEMENV_SOURCES=helpers/memenv/memenv.cc
 CC=cc
 CXX=g++
 PLATFORM=OS_LINUX
-PLATFORM_LDFLAGS=-pthread -ljemalloc -lm -lstdc++ -lpthread #-L./../jemalloc/lib -Wl,-rpath,./../jemalloc/lib -ljemalloc -lm -lstdc++ -lpthread
+PLATFORM_LDFLAGS=-pthread -L./../jemalloc/lib -Wl,-rpath,./../jemalloc/lib -ljemalloc -lm -lstdc++ -lpthread
 PLATFORM_LIBS= -lsnappy
 PLATFORM_CCFLAGS= -fno-builtin-memcmp -pthread -DOS_LINUX -DLEVELDB_PLATFORM_POSIX -DLEVELDB_ATOMIC_PRESENT -DSNAPPY
 PLATFORM_CXXFLAGS=-std=c++0x -fno-builtin-memcmp -pthread -DOS_LINUX -DLEVELDB_PLATFORM_POSIX -DLEVELDB_ATOMIC_PRESENT -DSNAPPY

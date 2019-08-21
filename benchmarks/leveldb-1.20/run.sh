@@ -13,11 +13,9 @@ LOCKS=(libmcs_spinlock.sh libhmcs_original.sh \
 
 DIR=results
 
+c=$1
 for l in ${LOCKS[@]}
 do
 	mkdir -p ${DIR}/$l
-	for c in 1 2 4 8 `seq 24 24 192` 384
-	do
-		${LOCK_DIR}/${l} taskset -c 0-$(($c - 1)) ./out-static/db_bench --benchmarks=readrandom --num=20 --time_ms=60000 --threads=$c >> ${DIR}/${l}/core.${c}
-	done
+        ${LOCK_DIR}/${l} taskset -c 0-$(($c - 1)) ./out-static/db_bench --benchmarks=readrandom --num=20 --time_ms=$2 --threads=$c >> ${DIR}/${l}/core.${c}
 done
