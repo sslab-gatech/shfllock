@@ -50,6 +50,16 @@ and NUMA-aware blocking rwlock.
     self.FS_TYPES = ["tmpfs"]
 ```
 
+- One issue with Fxmark is that we need to specify which benchmarks to run on line 520 in `run-fxmark.py`.
+  Please, modify the following line `("mem", "*", "DWOL", "80", "directio")),` to `("mem", "tmpfs", "DWOL", "*", "nodirectio")),`
+  If we use `*` for each column in the tuple, then Fxmark will comprehensively run all benchmarks on specified mediums for varying core count.
+  Columns in the tuple represent the following:
+  - `mem`: storage medium
+  - `tmpfs`: file system
+  - `DWOL`: benchmark name
+  - `80`: thread count
+  - `nodirectio`: This is specific for nodirectio
+
 #### Vbench
 
 - We use the following benchmarks from Vbench:
