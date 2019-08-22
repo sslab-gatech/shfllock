@@ -3,6 +3,7 @@
 - First compile the jemalloc present in `benchmarks` folder.
 ```bash
  $ cd ../jemalloc/autogen.sh
+ $ ./autogen.sh
  $ ./configure --without-export --disable-libdl
  $ make -j
  $ cd ../leveldb-1.20
