@@ -9,7 +9,7 @@ LOCK_DIR=./../../ulocks/src/litl
 LOCKS=(libmcs_spinlock.sh libhmcs_original.sh \
        libaqs_spinlock.sh libcbomcs_spinlock.sh \
        libcna_spinlock.sh libmalthusian_spinlock.sh \
-       libpthreadinterpose_original.sh libaqm_spin_then_park.sh)
+       libpthreadinterpose_original.sh libaqmwonode_spin_then_park.sh)
 
 DIR=results
 
