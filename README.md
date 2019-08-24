@@ -60,7 +60,7 @@ and NUMA-aware blocking rwlock.
   - `80`: thread count
   - `nodirectio`: This is specific for nodirectio
 - Note that `NUM_TEST_CONF=0` may be encountered on not appropriately setting the thread count.
-  For testing purpose, please use the online thread count (excluding HT).
+  For testing purpose, please use the online core count (excluding HT).
 
 #### Vbench
 
