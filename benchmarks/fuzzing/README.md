@@ -6,7 +6,7 @@
 - Compile the afl and the instrumentation part as follows:
 ```bash
  $ make -C afl
- $ make -C afl/llvm-mode
+ $ make -C afl/llvm_mode
 ```
 - Note that you will need LLVM installed with `$LLVM_CONFIG` and `$PATH` configured.
 
