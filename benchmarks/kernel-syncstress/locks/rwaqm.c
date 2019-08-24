@@ -526,11 +526,11 @@ void rwaqm_down_read(struct rwaqm *sem)
 }
 
 
-void __must_check rwaqm_down_read_killable(struct rwaqm *sem)
-{
-	/* XXX: Will handle the EINTR later */
-	rwaqm_down_read(sem);
-}
+/* void __must_check rwaqm_down_read_killable(struct rwaqm *sem) */
+/* { */
+/* 	/1* XXX: Will handle the EINTR later *1/ */
+/* 	rwaqm_down_read(sem); */
+/* } */
 
 /*
  * trylock for reading -- returns 1 if successful, 0 if contention

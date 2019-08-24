@@ -345,6 +345,7 @@ static void shuffle_waiters(struct aqs_lock *lock, struct aqs_node *node,
                 set_sleader(sleader, qend);
         }
 #endif
+        return;
 }
 
 void aqs_spin_lock_slowpath(struct aqs_lock *lock)

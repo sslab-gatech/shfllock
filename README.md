@@ -51,7 +51,7 @@ and NUMA-aware blocking rwlock.
 ```
 
 - One issue with Fxmark is that we need to specify which benchmarks to run on line 520 in `run-fxmark.py`.
-  Please, modify the following line `("mem", "*", "DWOL", "80", "directio")),` to `("mem", "tmpfs", "DWOL", "*", "nodirectio")),`
+  Please, modify the following line `("mem", "*", "MWCM", "80", "directio")),` to `("mem", "tmpfs", "MWCM", "*", "nodirectio")),`
   If we use `*` for each column in the tuple, then Fxmark will comprehensively run all benchmarks on specified mediums for varying core count.
   Columns in the tuple represent the following:
   - `mem`: storage medium
@@ -59,6 +59,8 @@ and NUMA-aware blocking rwlock.
   - `DWOL`: benchmark name
   - `80`: thread count
   - `nodirectio`: This is specific for nodirectio
+- Note that `NUM_TEST_CONF=0` may be encountered on not appropriately setting the thread count.
+  For testing purpose, please use the online thread count (excluding HT).
 
 #### Vbench
 

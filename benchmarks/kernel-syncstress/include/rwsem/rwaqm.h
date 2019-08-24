@@ -136,7 +136,7 @@ static inline int rwaqm_is_contended(struct rwaqm *sem)
 }
 
 extern void rwaqm_down_read(struct rwaqm *sem);
-extern void __must_check rwaqm_down_read_killable(struct rwaqm *sem);
+/* extern void __must_check rwaqm_down_read_killable(struct rwaqm *sem); */
 
 /*
  * trylock for reading -- returns 1 if successful, 0 if contention
