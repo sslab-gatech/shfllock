@@ -1,1 +1,9 @@
-bmarkprograms/*
+lib/
+obj/
+*~
+\#*\#
+lib*.sh
+include/topology.h
+.DS_Store
+src/*.swp
+include/*.swp
