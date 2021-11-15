@@ -11,6 +11,10 @@ such as NUMA-awareness, or blocking. We implement three locking
 protocols: NUMA-aware spinlock, NUMA-aware blocking mutex,
 and NUMA-aware blocking rwlock.
 
+ShflLock for the kernel(```klocks```) is provided under the terms of 
+GNU General Public License v2, and the user library(```ulocks```) 
+is released under the terms of MIT license. Please see the LICENSE 
+files in each directory.
 
 ## ShflLocks in kerenelspace
 
